@@ -6,6 +6,7 @@ from fastapi import FastAPI
 # Local imports
 from app.routes import (
     root,
+    items,
 )
 from app.core import config
 
@@ -14,6 +15,11 @@ description = """
 ### Root
 - Root endpoint of the API. Just a welcome message.
 - Health-check endpoint.
+
+### Items
+- CRUD operations for items (in-memory storage).
+- Pagination support for listing items.
+- Search functionality by name.
 """
 
 # Initialize FastAPI application
@@ -37,3 +43,4 @@ async def startup_event():
 
 # Register API routes
 app.include_router(root.router, prefix="", tags=["root"])
+app.include_router(items.router, prefix="/items", tags=["items"])
