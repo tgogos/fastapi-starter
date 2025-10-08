@@ -218,8 +218,8 @@ async def delete_item(item_id: UUID) -> None:
         # Remove from storage
         del items_storage[item_id]
         
-        # Return 204 No Content
-        return JSONResponse(status_code=204, content=None)
+        # Return 204 No Content - just return None, FastAPI handles the status code
+        return None
     
     except Exception as e:
         raise HTTPException(
