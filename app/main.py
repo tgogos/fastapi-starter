@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from app.routes import (
     root,
     items,
+    db_items,
 )
 from app.core import config
 
@@ -20,6 +21,12 @@ description = """
 - CRUD operations for items (in-memory storage).
 - Pagination support for listing items.
 - Search functionality by name.
+
+### Database Items
+- CRUD operations for items (MongoDB storage).
+- Pagination support for listing items.
+- Search functionality by name.
+- Persistent storage with MongoDB.
 """
 
 # Initialize FastAPI application
@@ -36,11 +43,13 @@ async def startup_event():
     Initialize application on startup.
     
     This function is called before the FastAPI app starts serving requests.
-    It performs necessary initialization tasks like setting up database indexes.
+    It performs necessary initialization tasks like setting up database connections.
     """
-    # Initialize MongoDB indexes (unique for serialNumber)
-    # mongo_utils.init_indexes()
+    # Connect to MongoDB
+    from app.utils.mongo import connect_to_mongo
+    await connect_to_mongo()
 
 # Register API routes
 app.include_router(root.router, prefix="", tags=["root"])
 app.include_router(items.router, prefix="/items", tags=["items"])
+app.include_router(db_items.router, prefix="/db-items", tags=["database-items"])

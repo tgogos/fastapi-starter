@@ -35,7 +35,8 @@ async def health():
     An easy way to get back information about the status of FastAPI starter
     """
     # Perform health checks
-    # db_healthy = await mongo_utils.check_database_connection()
+    from app.utils.mongo import check_database_connection
+    db_healthy = await check_database_connection()
     external_service_healthy = await check_external_service()
     current_time = time.time()
     uptime_seconds = int(current_time - start_time)
@@ -43,13 +44,13 @@ async def health():
     # Gather health information
     health_status = {
         "status": "ok",
-        # "mongodb_ping": "ok" if db_healthy else "not ok",
+        "mongodb_ping": "ok" if db_healthy else "not ok",
         "external_service": "healthy" if external_service_healthy else "unhealthy",
         "uptime_seconds": uptime_seconds,
     }
 
-    # if not db_healthy or not external_service_healthy:
-    #     health_status["status"] = "unhealthy"
+    if not db_healthy or not external_service_healthy:
+        health_status["status"] = "unhealthy"
 
     return health_status
 

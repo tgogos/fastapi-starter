@@ -1,10 +1,26 @@
 services:
   fastapi-starter:
-    image: ${DOCKER_REG}${DOCKER_REPO}${APP_NAME}:${DOCKER_TAG}
-    container_name: ${APP_NAME}
+    image: ${DOCKER_REG:-}${DOCKER_REPO:-}${APP_NAME:-fastapi-starter}:${DOCKER_TAG:-latest}
+    container_name: ${APP_NAME:-fastapi-starter}
     build:
       context: .
     ports:
-      - "${PUBLISH_PORT}:8000"
+      - "${PUBLISH_PORT:-8000}:8000"
+    depends_on:
+      - mongodb
     env_file:
       - .env
+
+  mongodb:
+    image: mongo:7.0
+    container_name: ${APP_NAME:-fastapi-starter}-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS:-pass}
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data:

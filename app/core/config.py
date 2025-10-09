@@ -41,7 +41,8 @@ def print_config_values() -> None:
     print(f"MONGO_PORT: {MONGO_PORT}")
     print(f"MONGO_USER: {MONGO_USER}")
     print(f"MONGO_AUTH_SOURCE: {MONGO_AUTH_SOURCE}")
-    print(f"MONGO_URI: mongodb://{MONGO_USER}:***@{MONGO_HOST}:{MONGO_PORT}/{MONGO_AUTH_SOURCE}")
+    print(f"MONGO_DATABASE: {MONGO_DATABASE}")
+    print(f"MONGO_URI: mongodb://{MONGO_USER}:***@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DATABASE}?authSource={MONGO_AUTH_SOURCE}")
     
     if DEBUG:
         print("\n=== Debug Information ===")
@@ -71,9 +72,10 @@ MONGO_PASS: str = get_env_variable("MONGO_PASS", default="pass")
 MONGO_HOST: str = get_env_variable("MONGO_HOST", default="mongodb")
 MONGO_PORT: str = get_env_variable("MONGO_PORT", default="27017")
 MONGO_AUTH_SOURCE: str = get_env_variable("MONGO_AUTH_SOURCE", default="admin")
+MONGO_DATABASE: str = get_env_variable("MONGO_DATABASE", default="fastapi_starter")
 
 # MongoDB connection string (for debugging)
-MONGO_URI: str = f"mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_AUTH_SOURCE}"
+MONGO_URI: str = f"mongodb://{MONGO_USER}:{MONGO_PASS}@{MONGO_HOST}:{MONGO_PORT}/{MONGO_DATABASE}?authSource={MONGO_AUTH_SOURCE}"
 
 # Print configuration values for debugging
 print_config_values()
