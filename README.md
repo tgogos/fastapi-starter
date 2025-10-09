@@ -4,10 +4,12 @@ A minimal FastAPI "starter" template for new projects...
 
 ## 🚀 Features
 
-- **Example endpoints**: Complete CRUD for `items` (stored in-memory) and `db-items` (stored in a Mongo database)
+- **Example endpoints**: Complete CRUD functionality for
+  - `items` (stored in-memory) and
+  - `db-items` (stored in a Mongo database)
 - **Pagination & Search**: Built-in pagination and simple search functionality
 - **Environment Configuration**: Flexible environment variable management with a `.env` and `docker compose`
-- **Makefile**: Convenient commands
+- **Makefile**: Convenient commands for various tasks
 - **MongoDB Integration**: Persistent data storage with Motor async driver
 
 ## 📁 Project Structure
@@ -20,8 +22,8 @@ fastapi-starter/
 │   ├── routes/         # API route handlers
 │   ├── utils/          # Utility functions
 │   └── main.py         # FastAPI application entry point
-├── docker-compose.yml      # Production Docker setup
-├── docker-compose.dev.yml  # Development Docker setup
+├── docker-compose.yml      # "Production" setup
+├── docker-compose.dev.yml  # "Development" setup
 ├── Dockerfile              # Container configuration
 └── requirements.txt        # Python dependencies
 ```
