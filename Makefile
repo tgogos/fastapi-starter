@@ -15,3 +15,6 @@ down:
 
 downv:
 	docker compose -f docker-compose.dev.yml down -v
+
+test:
+	docker compose -f docker-compose.dev.yml exec fastapi-starter pytest

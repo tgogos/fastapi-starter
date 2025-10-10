@@ -6,8 +6,9 @@ A minimal FastAPI "starter" template for new projects...
 
 - **Example endpoints**: Complete CRUD for `items` (stored in-memory) and `db-items` (stored in a Mongo database)
 - **Pagination & Search**: Built-in pagination and simple search functionality
+- **Comprehensive Testing**: Full test suite with pytest covering CRUD operations, error handling, and edge cases
 - **Environment Configuration**: Flexible environment variable management with a `.env` and `docker compose`
-- **Makefile**: Convenient commands
+- **Makefile**: Convenient commands for development and testing
 - **MongoDB Integration**: Persistent data storage with Motor async driver
 
 ## 📁 Project Structure
@@ -66,8 +67,37 @@ fastapi-starter/
 - `make upd` - Start development environment (detached)
 - `make down` - Stop development environment
 - `make downv` - Stop and remove volumes
+- `make test` - Run tests
 
+## 🧪 Testing
 
+The project includes comprehensive tests for the items endpoint using pytest. Tests cover:
+
+- **Complete CRUD Flow**: Create → Read → Update → Read → Search → Delete
+- **Error Handling**: 404 errors, validation errors, invalid UUIDs
+- **Pagination**: Page navigation, size limits, edge cases
+- **Search Functionality**: Case-insensitive search, no results, pagination
+- **Data Validation**: Required fields, field length limits
+- **Test Isolation**: Each test runs with clean state
+
+### Running Tests
+
+```bash
+# Run all tests
+make test
+
+# Run tests directly with docker compose
+docker compose -f docker-compose.dev.yml exec fastapi-starter pytest
+```
+
+### Test Structure
+
+```
+tests/
+├── __init__.py
+├── conftest.py          # Test configuration and fixtures
+└── test_items.py        # Comprehensive items endpoint tests
+```
 
 ## 🔧 Configuration
 
