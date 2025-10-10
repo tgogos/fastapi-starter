@@ -10,11 +10,7 @@ A minimal FastAPI "starter" template for new projects...
 - **Pagination & Search**: Built-in pagination and simple search functionality
 - **Comprehensive Testing**: Full test suite with pytest covering CRUD operations, error handling, and edge cases
 - **Environment Configuration**: Flexible environment variable management with a `.env` and `docker compose`
-<<<<<<< HEAD
 - **Makefile**: Convenient commands for development and testing
-=======
-- **Makefile**: Convenient commands for various tasks
->>>>>>> ad4af5248ba399ed742e6170cc199ca7c7b129fb
 - **MongoDB Integration**: Persistent data storage with Motor async driver
 
 ## 📁 Project Structure
