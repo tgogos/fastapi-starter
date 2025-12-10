@@ -1,6 +1,6 @@
 # FastAPI Starter
 
-A production-ready FastAPI starter template with MongoDB integration, comprehensive testing, and modern development tooling.
+A minimal FastAPI "starter" template for new projects...
 
 ## 🚀 Features
 
