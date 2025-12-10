@@ -1,31 +1,33 @@
 # FastAPI Starter
 
-A minimal FastAPI "starter" template for new projects...
+A production-ready FastAPI starter template with MongoDB integration, comprehensive testing, and modern development tooling.
 
 ## 🚀 Features
 
-- **Example endpoints**: Complete CRUD functionality for
-  - `items` (stored in-memory) and
-  - `db-items` (stored in a Mongo database)
-- **Pagination & Search**: Built-in pagination and simple search functionality
-- **Comprehensive Testing**: Full test suite with pytest covering CRUD operations, error handling, and edge cases
-- **Environment Configuration**: Flexible environment variable management with a `.env` and `docker compose`
-- **Makefile**: Convenient commands for development and testing
-- **MongoDB Integration**: Persistent data storage with Motor async driver
+- **RESTful API**: Complete CRUD operations with pagination and search
+  - In-memory storage (`/items`)
+  - MongoDB persistent storage (`/db-items`)
+- **Configuration Management**: Pydantic Settings with environment variable validation
+- **Database Integration**: Async MongoDB with Motor driver
+- **Testing**: Comprehensive pytest test suite with fixtures
+- **Development Tools**: Docker Compose setup with hot reload
+- **API Documentation**: Auto-generated OpenAPI/Swagger docs
 
 ## 📁 Project Structure
 
 ```
 fastapi-starter/
 ├── app/
-│   ├── core/           # Configuration & core utilities
-│   ├── models/         # Data models & schemas
+│   ├── core/           # Configuration management (Pydantic Settings)
+│   ├── models/         # Pydantic models and schemas
 │   ├── routes/         # API route handlers
-│   ├── utils/          # Utility functions
+│   ├── utils/          # Database utilities and helpers
 │   └── main.py         # FastAPI application entry point
-├── docker-compose.yml      # "Production" setup
-├── docker-compose.dev.yml  # "Development" setup
-├── Dockerfile              # Container configuration
+├── tests/              # Test suite
+├── docker-compose.yml      # Production Docker Compose configuration
+├── docker-compose.dev.yml  # Development Docker Compose configuration
+├── Dockerfile             # Container image definition
+├── Makefile               # Development commands
 └── requirements.txt        # Python dependencies
 ```
 
@@ -34,53 +36,106 @@ fastapi-starter/
 ### Prerequisites
 
 - Docker and Docker Compose
-- Make (optional, for using Makefile commands)
+- Make (optional, for convenience commands)
 
-### Development Setup
+### Development
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd fastapi-starter
-   ```
+```bash
+# Start development environment (with hot reload)
+make upd
 
-2. **Set up environment variables**
-   ```bash
-   make dotenv  # Creates .env file from .env.example
-   ```
+# Access the application
+# API: http://localhost:8000
+# Interactive docs: http://localhost:8000/docs
+# Alternative docs: http://localhost:8000/redoc
+```
 
-3. **Start the development environment**
-   ```bash
-   make up  # Starts with hot reload
-   # or
-   make upd  # Starts in detached mode
-   ```
+### Available Commands
 
-4. **Access the application**
-   - API: http://localhost:8000
-   - Interactive API docs: http://localhost:8000/docs
-   - Alternative docs: http://localhost:8000/redoc
+| Command | Description |
+|---------|-------------|
+| `make dotenv` | Create `.env` file from template |
+| `make build` | Build Docker images |
+| `make up` | Start development environment (foreground) |
+| `make upd` | Start development environment (detached) |
+| `make down` | Stop development environment |
+| `make downv` | Stop and remove volumes |
+| `make test` | Run test suite |
 
-### Available Make Commands
+## 🔧 Configuration
 
-- `make dotenv` - Create .env file from template
-- `make build` - Build Docker images
-- `make up` - Start development environment
-- `make upd` - Start development environment (detached)
-- `make down` - Stop development environment
-- `make downv` - Stop and remove volumes
-- `make test` - Run tests
+### Environment Variables
+
+The application uses **Pydantic Settings** for configuration management, providing type validation and clear source tracking. Configuration values are loaded with the following priority:
+
+1. **OS environment variables** (highest priority)
+2. **`.env` file** (project root)
+3. **Default values** (lowest priority)
+
+#### Available Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VERSION` | `0.1.0` | Application version |
+| `ENVIRONMENT` | `development` | Runtime environment |
+| `DEBUG` | `false` | Enable debug mode |
+| `PUBLISH_PORT` | `8000` | API server port |
+| `MONGO_USER` | `root` | MongoDB username |
+| `MONGO_PASS` | `pass` | MongoDB password |
+| `MONGO_HOST` | `mongodb` | MongoDB hostname |
+| `MONGO_PORT` | `27017` | MongoDB port |
+| `MONGO_AUTH_SOURCE` | `admin` | MongoDB authentication database |
+| `MONGO_DATABASE` | `fastapi_starter` | MongoDB database name |
+
+#### Docker Compose Integration
+
+When using Docker Compose, environment variables are automatically loaded from:
+- Host environment variables
+- `.env` file in the project root (via `env_file` directive)
+- Default values in `docker-compose.yml`
+
+The application prints configuration values with their sources on startup when `DEBUG=true`:
+
+```
+=== Configuration Values (with sources) ===
+             VERSION: '0.1.0' [OS]
+             MONGO_HOST: 'mongodb' [.env]
+             MONGO_DATABASE: 'fastapi_starter' [default]
+             ...
+```
+
+## 🚦 Application Bootstrap
+
+### Startup Sequence
+
+1. **Configuration Loading**: Pydantic Settings loads environment variables and validates types
+2. **FastAPI Initialization**: Application instance is created with metadata
+3. **Database Connection**: MongoDB connection is established via `startup_event` hook
+4. **Route Registration**: API routes are registered with their respective prefixes
+5. **Server Start**: FastAPI development server starts listening on configured port
+
+### Startup Event
+
+The application uses FastAPI's `@app.on_event("startup")` hook to initialize MongoDB:
+
+```python
+@app.on_event("startup")
+async def startup_event():
+    from app.utils.mongo import connect_to_mongo
+    await connect_to_mongo()
+```
+
+This ensures the database connection is established before handling any requests. Connection failures are logged and will prevent the application from starting.
 
 ## 🧪 Testing
 
-The project includes comprehensive tests for the items endpoint using pytest. Tests cover:
+The project includes a comprehensive test suite covering:
 
-- **Complete CRUD Flow**: Create → Read → Update → Read → Search → Delete
-- **Error Handling**: 404 errors, validation errors, invalid UUIDs
+- **CRUD Operations**: Create, read, update, delete workflows
+- **Error Handling**: 404 errors, validation errors, invalid inputs
 - **Pagination**: Page navigation, size limits, edge cases
-- **Search Functionality**: Case-insensitive search, no results, pagination
-- **Data Validation**: Required fields, field length limits
-- **Test Isolation**: Each test runs with clean state
+- **Search**: Case-insensitive search with pagination
+- **Data Validation**: Required fields, type validation, constraints
 
 ### Running Tests
 
@@ -88,8 +143,11 @@ The project includes comprehensive tests for the items endpoint using pytest. Te
 # Run all tests
 make test
 
-# Run tests directly with docker compose
+# Run tests directly
 docker compose -f docker-compose.dev.yml exec fastapi-starter pytest
+
+# Run with verbose output
+docker compose -f docker-compose.dev.yml exec fastapi-starter pytest -v
 ```
 
 ### Test Structure
@@ -97,43 +155,28 @@ docker compose -f docker-compose.dev.yml exec fastapi-starter pytest
 ```
 tests/
 ├── __init__.py
-├── conftest.py          # Test configuration and fixtures
-└── test_items.py        # Comprehensive items endpoint tests
-```
-
-## 🔧 Configuration
-
-Key environment variables (set in `.env` file):
-
-```env
-# Application
-APP_NAME=fastapi-starter
-PUBLISH_PORT=8000
-
-# Docker
-DOCKER_REG=
-DOCKER_REPO=
-DOCKER_TAG=latest
-
-# MongoDB
-MONGO_USER=root
-MONGO_PASS=pass
+├── conftest.py          # Pytest fixtures and configuration
+└── test_items.py        # Comprehensive endpoint tests
 ```
 
 ## 📦 Dependencies
 
-- **FastAPI**: Modern web framework for APIs
-- **Motor**: Async MongoDB driver
-- **PyMongo**: MongoDB Python driver
-- **Python 3.12**: Latest Python version
+### Core
 
-## 🤝 Contributing
+- **FastAPI** `0.122.0` - Modern web framework
+- **Starlette** `0.50.0` - ASGI framework
+- **Pydantic Settings** `2.5.0` - Configuration management
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test your changes
-5. Submit a pull request
+### Database
+
+- **Motor** `3.3.2` - Async MongoDB driver
+- **PyMongo** `4.6.0` - MongoDB Python driver
+
+### Development
+
+- **pytest** `7.4.4` - Testing framework
+- **pytest-asyncio** `0.23.2` - Async test support
+- **httpx** `0.27.0` - HTTP client for testing
 
 ## 📄 License
 
