@@ -1,0 +1,28 @@
+{% if form_error %}
+<p class="flash flash-error" role="alert">{{ form_error }} <button type="button" class="flash-dismiss" aria-label="Dismiss">×</button></p>
+{% endif %}
+
+<figure>
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Name</th>
+        <th scope="col">Description</th>
+        <th scope="col">Updated</th>
+        <th scope="col">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="items-tbody">
+      {% if items %}
+        {% for item in items %}
+          {% include "partials/item_row.html" %}
+        {% endfor %}
+      {% else %}
+        <tr class="empty-row">
+          <td colspan="4"><em>No items yet.</em></td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+  <figcaption>{{ total }} item{% if total != 1 %}s{% endif %}</figcaption>
+</figure>

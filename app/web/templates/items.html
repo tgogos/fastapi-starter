@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Items · FastAPI Starter{% endblock %}
+{% block content %}
+<h1>SQL items</h1>
+<p>HTMX UI backed by SQLite. Writes require a logged-in session.</p>
+
+<article>
+  <h2>Add item</h2>
+  <form
+    hx-post="/ui/items"
+    hx-target="#items-panel"
+    hx-swap="innerHTML"
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="grid">
+      <label>
+        Name
+        <input type="text" name="name" required maxlength="100">
+      </label>
+      <label>
+        Description
+        <input type="text" name="description" maxlength="500">
+      </label>
+    </div>
+    <button type="submit">Create</button>
+  </form>
+</article>
+
+<div id="items-panel">
+  {% include "partials/items_table.html" %}
+</div>
+{% endblock %}
