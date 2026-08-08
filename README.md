@@ -4,7 +4,8 @@ Boilerplate for a **server-driven web UI with FastAPI + HTMX** (no SPA, no Node 
 
 Browsers get HTML (Jinja + [Pico CSS](https://picocss.com/) + [HTMX](https://htmx.org/)). Machines get `/api` with Bearer tokens. One user store, Docker Compose, pytest.
 
-Architecture and conventions: [`docs/ENGINEERING.md`](docs/ENGINEERING.md).
+Architecture and conventions: [`docs/ENGINEERING.md`](docs/ENGINEERING.md).  
+Sessions, CSRF, and Bearer explained: [`docs/auth.md`](docs/auth.md).
 
 ## Primary path vs demos
 
@@ -37,6 +38,8 @@ make down     # stop
 ```
 
 ## Auth in brief
+
+See [`docs/auth.md`](docs/auth.md) for the full picture (cookies, CSRF, Bearer).
 
 - **Browser / HTMX:** cookie session + CSRF on mutating HTML (`/auth`, `/ui`).
 - **API:** Bearer via `POST /api/auth/token`, or session cookie. Session writes to `/api` need `X-CSRF-Token` (same token as `<meta name="csrf-token">` on UI pages). Bearer skips CSRF.
@@ -79,7 +82,7 @@ app/
   web/      # HTML/HTMX templates + static (removable)
   models/   # Pydantic schemas
   core/     # settings
-docs/       # ENGINEERING.md
+docs/       # ENGINEERING.md, auth.md
 ```
 
 ## Removing pieces

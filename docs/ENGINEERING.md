@@ -58,6 +58,8 @@ The SQL JSON API is mounted at `/api/sql-items`. Demos remain at `/items` and `/
 
 ## Authentication
 
+Teaching overview (cookies, CSRF, Bearer): [`auth.md`](auth.md).
+
 One user store; two client mechanisms:
 
 1. **Browsers / HTMX** — signed session cookie. Mutating HTML/HTMX requests require CSRF (`require_user_html`, `verify_csrf`).
