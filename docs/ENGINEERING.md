@@ -90,7 +90,7 @@ Books include scalars (`category`, `isbn`, `page_count`, `available`) and `added
 
 - **`HX-Request` dual response** — one list route returns the full page or `partials/books_table.html`.
 - **Search** — `q` on title/author/ISBN with debounce + `hx-push-url`. Keep the search/filter form **outside** the HTMX swap target so inputs are not replaced (focus stays while typing).
-- **Advanced filters** — `/ui/books/search` uses selects/number inputs (`change` + debounced text) targeting the results panel only.
+- **Advanced filters** — `/ui/books/search`: selects + debounced text update live; year inputs update on `change`/explicit Apply (avoid mid-typing requests). Active filter chips render inside the results partial. Delete keeps filter query params via `return_to`.
 - **Pagination** — `page` / `size` query params, same dual-response + push URL; swaps only the results panel.
 - **Indicator** — shared `#books-indicator` via `hx-indicator` (search, pagination, create). CSS-only spinner; HTMX toggles `.htmx-request` / opacity. Keep the indicator outside the swap target.
 - Progressive enhancement: pagination links keep usable `href`s.

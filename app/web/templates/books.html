@@ -31,8 +31,8 @@
       <label>
         Category
         <select name="category">
-          {% for c in categories %}
-          <option value="{{ c }}" {% if c == 'fiction' %}selected{% endif %}>{{ c }}</option>
+          {% for value, label in categories %}
+          <option value="{{ value }}" {% if value == 'fiction' %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </label>

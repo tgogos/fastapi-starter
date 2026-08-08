@@ -263,8 +263,9 @@ class TestAuthWeb:
         )
         page = auth_client.get("/ui/books/search")
         assert page.status_code == 200
-        assert "Advanced search" in page.text
+        assert "Search books" in page.text
         assert 'name="category"' in page.text
+        assert "Sci-Fi" in page.text or "Fantasy" in page.text
 
         filtered = auth_client.get(
             "/ui/books/search",
@@ -273,6 +274,8 @@ class TestAuthWeb:
         )
         assert filtered.status_code == 200
         assert "Filter Me" in filtered.text
+        assert "Active filters" in filtered.text
+        assert "Fantasy" in filtered.text
         assert "<html" not in filtered.text.lower()
 
     def test_login_logout(self, client: TestClient):

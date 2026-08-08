@@ -31,7 +31,19 @@ router = APIRouter()
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 DEFAULT_PAGE_SIZE = 10
-CATEGORY_OPTIONS = sorted(BOOK_CATEGORIES)
+
+CATEGORY_LABELS: dict[str, str] = {
+    "fiction": "Fiction",
+    "nonfiction": "Nonfiction",
+    "scifi": "Sci-Fi",
+    "fantasy": "Fantasy",
+    "mystery": "Mystery",
+    "biography": "Biography",
+    "other": "Other",
+}
+CATEGORY_CHOICES: list[tuple[str, str]] = [
+    (key, CATEGORY_LABELS[key]) for key in sorted(BOOK_CATEGORIES)
+]
 
 
 def _can_edit(user: dict) -> bool:
@@ -45,7 +57,8 @@ def _ctx(request: Request, user: dict, **extra):
         "csrf_token": get_or_create_csrf_token(request),
         "can_edit": _can_edit(user),
         "is_admin": role_at_least(user["role"], "admin"),
-        "categories": CATEGORY_OPTIONS,
+        "categories": CATEGORY_CHOICES,
+        "category_labels": CATEGORY_LABELS,
         **extra,
     }
 
@@ -97,6 +110,36 @@ def _books_list_url(
     return f"{base}?{urlencode(params)}"
 
 
+def _active_filter_chips(
+    *,
+    q: str | None,
+    category: str | None,
+    available: str | None,
+    added_by_label: str | None,
+    year_min: int | None,
+    year_max: int | None,
+) -> list[str]:
+    chips: list[str] = []
+    if q:
+        chips.append(f"Text: {q}")
+    if category and category in CATEGORY_LABELS:
+        chips.append(CATEGORY_LABELS[category])
+    avail = _parse_available_form(available)
+    if avail is True:
+        chips.append("Available")
+    elif avail is False:
+        chips.append("Unavailable")
+    if added_by_label:
+        chips.append(f"Added by {added_by_label}")
+    if year_min is not None and year_max is not None:
+        chips.append(f"{year_min}–{year_max}")
+    elif year_min is not None:
+        chips.append(f"From {year_min}")
+    elif year_max is not None:
+        chips.append(f"Through {year_max}")
+    return chips
+
+
 async def _books_page_data(
     *,
     base_path: str,
@@ -106,6 +149,7 @@ async def _books_page_data(
     category: str | None = None,
     available: str | None = None,
     added_by_user_id: int | None = None,
+    added_by_label: str | None = None,
     year_min: int | None = None,
     year_max: int | None = None,
 ) -> dict:
@@ -122,6 +166,33 @@ async def _books_page_data(
         year_max=year_max,
     )
     pages = books_repo.total_pages(total, size)
+    return_to = "search" if base_path.rstrip("/").endswith("/search") else "list"
+    results_params: dict[str, str | int] = {
+        "page": page,
+        "size": size,
+        "return_to": return_to,
+    }
+    if q:
+        results_params["q"] = q
+    if cat:
+        results_params["category"] = cat
+    if available and available != "any":
+        results_params["available"] = available
+    if added_by_user_id is not None:
+        results_params["added_by_user_id"] = added_by_user_id
+    if year_min is not None:
+        results_params["year_min"] = year_min
+    if year_max is not None:
+        results_params["year_max"] = year_max
+
+    chips = _active_filter_chips(
+        q=q,
+        category=cat,
+        available=available,
+        added_by_label=added_by_label,
+        year_min=year_min,
+        year_max=year_max,
+    )
     return {
         "books": rows,
         "total": total,
@@ -135,6 +206,9 @@ async def _books_page_data(
         "year_min": year_min if year_min is not None else "",
         "year_max": year_max if year_max is not None else "",
         "list_base": base_path,
+        "results_query": urlencode(results_params),
+        "active_filters": chips,
+        "show_filter_summary": base_path.rstrip("/").endswith("/search"),
         "prev_url": (
             _books_list_url(
                 base_path,
@@ -254,6 +328,14 @@ async def books_search_page(
     except ValueError:
         return HTMLResponse("Invalid filter value", status_code=400)
 
+    users = await list_users()
+    added_by_label = None
+    if added_by is not None:
+        added_by_label = next(
+            (u["username"] for u in users if u["id"] == added_by),
+            f"user #{added_by}",
+        )
+
     data = await _books_page_data(
         base_path="/ui/books/search",
         page=page,
@@ -262,10 +344,10 @@ async def books_search_page(
         category=category,
         available=available,
         added_by_user_id=added_by,
+        added_by_label=added_by_label,
         year_min=ymin,
         year_max=ymax,
     )
-    users = await list_users()
     template = (
         "partials/books_table.html"
         if request.headers.get("HX-Request") == "true"
@@ -352,6 +434,9 @@ async def edit_book_form(
             size=DEFAULT_PAGE_SIZE,
             q="",
             list_base="/ui/books",
+            results_query=urlencode(
+                {"page": 1, "size": DEFAULT_PAGE_SIZE, "return_to": "list"}
+            ),
         ),
     )
 
@@ -376,6 +461,9 @@ async def book_row(
             size=DEFAULT_PAGE_SIZE,
             q="",
             list_base="/ui/books",
+            results_query=urlencode(
+                {"page": 1, "size": DEFAULT_PAGE_SIZE, "return_to": "list"}
+            ),
         ),
     )
 
@@ -439,6 +527,9 @@ async def update_book(
             size=DEFAULT_PAGE_SIZE,
             q="",
             list_base="/ui/books",
+            results_query=urlencode(
+                {"page": 1, "size": DEFAULT_PAGE_SIZE, "return_to": "list"}
+            ),
         ),
     )
 
@@ -455,12 +546,47 @@ async def delete_book(
     page: int = Query(1, ge=1),
     size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=100),
     q: str | None = Query(None),
+    category: str | None = Query(None),
+    available: str | None = Query(None),
+    added_by_user_id: str | None = Query(None),
+    year_min: str | None = Query(None),
+    year_max: str | None = Query(None),
+    return_to: str = Query("list"),
 ):
     await books_repo.delete_book(book_id)
-    data = await _books_page_data(base_path="/ui/books", page=page, size=size, q=q)
+    try:
+        ymin = _parse_optional_int(year_min)
+        ymax = _parse_optional_int(year_max)
+        added_by = _parse_optional_int(added_by_user_id)
+    except ValueError:
+        return HTMLResponse("Invalid filter value", status_code=400)
+
+    base_path = "/ui/books/search" if return_to == "search" else "/ui/books"
+    added_by_label = None
+    if added_by is not None:
+        users = await list_users()
+        added_by_label = next(
+            (u["username"] for u in users if u["id"] == added_by),
+            f"user #{added_by}",
+        )
+
+    async def _reload(page_num: int) -> dict:
+        return await _books_page_data(
+            base_path=base_path,
+            page=page_num,
+            size=size,
+            q=q,
+            category=category,
+            available=available,
+            added_by_user_id=added_by,
+            added_by_label=added_by_label,
+            year_min=ymin,
+            year_max=ymax,
+        )
+
+    data = await _reload(page)
     if data["total"] and page > data["total_pages"]:
-        page = data["total_pages"]
-        data = await _books_page_data(base_path="/ui/books", page=page, size=size, q=q)
+        data = await _reload(data["total_pages"])
     return templates.TemplateResponse(
         request,
         "partials/books_table.html",

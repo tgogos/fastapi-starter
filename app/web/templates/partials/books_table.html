@@ -2,6 +2,21 @@
 <p class="flash flash-error" role="alert">{{ form_error }} <button type="button" class="flash-dismiss" aria-label="Dismiss">×</button></p>
 {% endif %}
 
+{% if show_filter_summary %}
+<div class="filter-summary" aria-live="polite">
+  {% if active_filters %}
+  <p class="filter-summary-label"><strong>Active filters</strong></p>
+  <ul class="filter-chips">
+    {% for chip in active_filters %}
+    <li>{{ chip }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="filter-summary-label muted">No filters — showing all books.</p>
+  {% endif %}
+</div>
+{% endif %}
+
 <figure class="books-figure">
   <table>
     <thead>
@@ -25,7 +40,9 @@
         {% endfor %}
       {% else %}
         <tr class="empty-row">
-          <td colspan="{% if can_edit %}8{% else %}7{% endif %}"><em>No books found.</em></td>
+          <td colspan="{% if can_edit %}8{% else %}7{% endif %}">
+            <em>{% if active_filters %}No books match these filters.{% else %}No books found.{% endif %}</em>
+          </td>
         </tr>
       {% endif %}
     </tbody>

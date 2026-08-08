@@ -21,8 +21,8 @@
         <label>
           Category
           <select name="category">
-            {% for c in categories %}
-            <option value="{{ c }}" {% if book.category == c %}selected{% endif %}>{{ c }}</option>
+            {% for value, label in categories %}
+            <option value="{{ value }}" {% if book.category == value %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
           </select>
         </label>
