@@ -5,13 +5,15 @@ A minimal FastAPI starter template with JSON APIs, MongoDB, SQLite, session auth
 ## Features
 
 - **RESTful API**
-  - In-memory storage (`/items`)
-  - MongoDB persistent storage (`/db-items`)
-  - SQLite persistent storage (`/sql-items`) — writes require login
+  - In-memory storage (`/items`) — demo
+  - MongoDB persistent storage (`/db-items`) — demo
+  - SQLite persistent storage (`/api/sql-items`) — writes require Bearer token or session
 - **Web UI** (removable): Pico CSS + HTMX + vanilla JS under `/ui` and `/auth`
-- **Auth**: signed cookie sessions, CSRF on mutating HTML/HTMX requests
+- **Auth**:
+  - Browser: signed cookie sessions + CSRF on mutating HTML/HTMX requests
+  - API: `POST /api/auth/token` → opaque Bearer token (Swagger Authorize)
 - **Configuration**: Pydantic Settings with environment variable validation
-- **Testing**: pytest suite (in-memory items, SQL items, login redirects)
+- **Testing**: pytest suite (in-memory items, SQL items, token + session auth)
 - **Docker Compose** with hot reload
 
 ## Project Structure
@@ -28,7 +30,9 @@ fastapi-starter/
 │   ├── web/            # HTML/HTMX templates + static (removable)
 │   └── main.py
 ├── tests/
+├── docs/               # Engineering decisions
 ├── data/               # SQLite file (gitignored *.db)
+├── AGENTS.md
 ├── docker-compose.yml
 ├── docker-compose.dev.yml
 ├── Dockerfile
@@ -50,10 +54,24 @@ make dotenv   # copies .env.example → .env
 make upd      # build + start (detached)
 
 # API:        http://localhost:8000
-# Docs:       http://localhost:8000/docs
+# Docs:       http://localhost:8000/docs  (Authorize with Bearer from /api/auth/token)
 # Web UI:     http://localhost:8000/ui/items  (login first)
 # Login:      http://localhost:8000/auth/login
 ```
+
+### API token (Swagger / curl)
+
+```bash
+curl -s -X POST http://localhost:8000/api/auth/token \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"admin123"}'
+# → {"access_token":"...","token_type":"bearer"}
+
+curl -s http://localhost:8000/api/auth/me \
+  -H "Authorization: Bearer <access_token>"
+```
+
+In `/docs`, call **POST /api/auth/token**, then **Authorize** and paste the `access_token` as a Bearer token.
 
 ### Demo login
 
@@ -102,8 +120,8 @@ Priority: OS environment → `.env` → defaults.
 
 ### NoSQL-only (drop SQLite + SQL UI)
 
-1. Delete `app/db/`, `app/auth/` (if unused), `app/routes/sql_items.py`, `app/models/sql_item.py`
-2. Remove SQLite connect/seed from lifespan; remove `/sql-items` router
+1. Delete `app/db/`, `app/auth/` (if unused), `app/routes/sql_items.py`, `app/routes/api_auth.py`, `app/models/sql_item.py`, `app/models/auth.py`
+2. Remove SQLite connect/seed from lifespan; remove `/api/sql-items` and `/api/auth` routers
 3. Remove or slim `app/web/` if it only demos SQL items
 4. Drop `aiosqlite` / `bcrypt` from `requirements.txt` if unused
 5. Remove `data/` volume mounts from Compose
@@ -130,7 +148,7 @@ make test
 # or: docker compose -f docker-compose.dev.yml exec fastapi-starter pytest -v
 ```
 
-Coverage includes in-memory `/items`, `/sql-items` CRUD (auth-gated writes), login page, and `/ui/items` redirect when anonymous.
+Coverage includes in-memory `/items`, `/api/sql-items` CRUD (session and Bearer), `/api/auth/token`, login page, and `/ui/items` redirect when anonymous.
 
 ## License
 

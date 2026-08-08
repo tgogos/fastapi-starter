@@ -1,17 +1,24 @@
-"""FastAPI dependencies for session auth and CSRF."""
+"""FastAPI dependencies for session auth, Bearer tokens, and CSRF."""
 
 from __future__ import annotations
 
 import secrets
-from typing import Any, Optional
+from typing import Annotated, Any, Optional
 
 from fastapi import Depends, HTTPException, Request, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.auth.exceptions import LoginRequired
+from app.auth.tokens import get_user_by_token
 from app.auth.users import get_user_by_id
 
 SESSION_USER_KEY = "user_id"
 SESSION_CSRF_KEY = "csrf_token"
+
+bearer_scheme = HTTPBearer(
+    auto_error=False,
+    description="Opaque token from POST /api/auth/token",
+)
 
 
 def get_or_create_csrf_token(request: Request) -> str:
@@ -49,7 +56,8 @@ async def verify_csrf(request: Request) -> None:
 ensure_csrf = verify_csrf
 
 
-async def get_current_user(request: Request) -> Optional[dict[str, Any]]:
+async def get_session_user(request: Request) -> Optional[dict[str, Any]]:
+    """Resolve the logged-in user from the signed session cookie only."""
     user_id = request.session.get(SESSION_USER_KEY)
     if user_id is None:
         return None
@@ -60,20 +68,45 @@ async def get_current_user(request: Request) -> Optional[dict[str, Any]]:
     return {"id": user["id"], "username": user["username"]}
 
 
+# Alias used by HTML auth routes
+get_current_user = get_session_user
+
+
+async def get_api_user(
+    request: Request,
+    credentials: Annotated[
+        Optional[HTTPAuthorizationCredentials], Depends(bearer_scheme)
+    ],
+) -> Optional[dict[str, Any]]:
+    """Resolve user from Bearer token (preferred) or session cookie."""
+    if credentials is not None and credentials.credentials:
+        user = await get_user_by_token(credentials.credentials)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or unknown token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return user
+    return await get_session_user(request)
+
+
 async def require_user(
-    user: Optional[dict[str, Any]] = Depends(get_current_user),
+    user: Optional[dict[str, Any]] = Depends(get_api_user),
 ) -> dict[str, Any]:
+    """Require auth for JSON API routes (Bearer or session)."""
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     return user
 
 
 async def require_user_html(request: Request) -> dict[str, Any]:
     """Require login for HTML routes; redirects via LoginRequired handler."""
-    user = await get_current_user(request)
+    user = await get_session_user(request)
     if user is None:
         raise LoginRequired()
     return user

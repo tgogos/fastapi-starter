@@ -1,8 +1,10 @@
-"""Authentication helpers (session-based)."""
+"""Authentication helpers (session + opaque Bearer tokens)."""
 
 from app.auth.passwords import hash_password, verify_password
 from app.auth.deps import (
     get_current_user,
+    get_session_user,
+    get_api_user,
     require_user,
     require_user_html,
     verify_csrf,
@@ -14,6 +16,8 @@ __all__ = [
     "hash_password",
     "verify_password",
     "get_current_user",
+    "get_session_user",
+    "get_api_user",
     "require_user",
     "require_user_html",
     "verify_csrf",

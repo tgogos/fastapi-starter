@@ -54,7 +54,7 @@ Path indicates the client. Do not serve HTML under `/api`, and do not issue API 
 
 **HTMX:** pages and partials share the `/ui/...` prefix (same router). Do not add a separate `/htmx` prefix. Use `templates/` for full pages and `templates/partials/` for fragments.
 
-**Status:** The SQL JSON API is currently mounted at `/sql-items` (session auth on writes only). Moving it under `/api`, adding token auth, and wiring Swagger Bearer are decided but not implemented yet. Existing paths remain valid until that work lands.
+The SQL JSON API is mounted at `/api/sql-items`. Demos remain at `/items` and `/db-items`.
 
 ## Authentication
 
@@ -69,7 +69,7 @@ CSRF applies to cookie-authenticated browser mutations. Bearer requests do not u
 
 In-memory and Mongo demos remain unauthenticated unless that changes deliberately.
 
-**Status:** Session + CSRF for the UI and session checks on `/sql-items` writes are implemented. Bearer tokens, `/api/auth/token`, dual acceptance in `require_user`, and Swagger Bearer are decided but not implemented yet.
+Implemented: session + CSRF for the UI; `POST /api/auth/token` + opaque tokens in `api_tokens`; `require_user` accepts Bearer or session; Swagger shows HTTP Bearer via `HTTPBearer` on API deps.
 
 ## Non-negotiables
 
@@ -83,9 +83,10 @@ In-memory and Mongo demos remain unauthenticated unless that changes deliberatel
 - Lifespan for connect / schema / seed / shutdown (not deprecated `@on_event`).
 - Process-wide SQLite connection via `app/db/connection.py` (simple single-process setup; not a pool).
 - Repository-style helpers return dicts (or simple structures); routes map to Pydantic.
-- Separate dependencies for JSON vs HTML auth: `require_user` vs `require_user_html` + `LoginRequired`.
+- Separate dependencies for JSON vs HTML auth: `require_user` (Bearer or session) vs `require_user_html` + `LoginRequired` (session only).
+- Opaque API tokens hashed (SHA-256) in `api_tokens`; plaintext returned once from `POST /api/auth/token`.
 - Settings via Pydantic Settings (`app/core/config.py`).
-- Shared identity helpers in `app/auth/` (passwords, users, deps). HTTP routes live in `app/routes/` (JSON) and `app/web/` (HTML).
+- Shared identity helpers in `app/auth/` (passwords, users, tokens, deps). HTTP routes live in `app/routes/` (JSON) and `app/web/` (HTML).
 
 ## Out of scope
 

@@ -10,7 +10,7 @@ from starlette.middleware.sessions import SessionMiddleware
 # Local imports
 from app.auth.exceptions import LoginRequired
 from app.core import config
-from app.routes import root, items, db_items, sql_items
+from app.routes import root, items, db_items, sql_items, api_auth
 from app.web import auth_routes, items_routes
 from app.web.paths import STATIC_DIR
 
@@ -19,23 +19,22 @@ description = """
 - Root endpoint of the API. Just a welcome message.
 - Health-check endpoint.
 
-### Items
+### Items (demo)
 - CRUD operations for items (in-memory storage).
-- Pagination support for listing items.
-- Search functionality by name.
 
-### Database Items
+### Database Items (demo)
 - CRUD operations for items (MongoDB storage).
-- Pagination support for listing items.
-- Search functionality by name.
-- Persistent storage with MongoDB.
 
-### SQL Items
-- CRUD operations for items (SQLite storage).
-- Write operations require a logged-in session.
+### API auth
+- `POST /api/auth/token` — username/password → opaque Bearer token.
+- `GET /api/auth/me` — current user (Bearer or session).
+
+### SQL Items (primary)
+- CRUD under `/api/sql-items` (SQLite).
+- Writes require Bearer token or session cookie.
 
 ### Web UI
-- Pico CSS + HTMX pages under `/ui` and `/auth`.
+- Pico CSS + HTMX under `/ui`; browser login under `/auth`.
 """
 
 
@@ -77,11 +76,12 @@ async def login_required_handler(request: Request, exc: LoginRequired):
     return RedirectResponse(url="/auth/login", status_code=303)
 
 
-# JSON API
+# JSON API (demos stay at top level; primary path under /api)
 app.include_router(root.router, prefix="", tags=["root"])
 app.include_router(items.router, prefix="/items", tags=["items"])
 app.include_router(db_items.router, prefix="/db-items", tags=["database-items"])
-app.include_router(sql_items.router, prefix="/sql-items", tags=["sql-items"])
+app.include_router(api_auth.router, prefix="/api/auth", tags=["auth-api"])
+app.include_router(sql_items.router, prefix="/api/sql-items", tags=["sql-items"])
 
 # HTML / HTMX (removable with app/web/)
 app.include_router(auth_routes.router, prefix="/auth", tags=["auth-web"])

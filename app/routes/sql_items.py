@@ -1,4 +1,4 @@
-"""JSON CRUD for SQLite-backed items."""
+"""JSON CRUD for SQLite-backed items (mounted at /api/sql-items)."""
 
 from math import ceil
 

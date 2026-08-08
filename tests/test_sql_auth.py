@@ -1,50 +1,97 @@
-"""Tests for SQLite-backed /sql-items API and auth-gated writes."""
+"""Tests for /api/sql-items, API tokens, and browser auth."""
 
 import os
 
 from fastapi.testclient import TestClient
 
+API_SQL = "/api/sql-items"
+
 
 class TestSqlItemsApi:
     def test_list_empty(self, client: TestClient):
-        response = client.get("/sql-items/")
+        response = client.get(f"{API_SQL}/")
         assert response.status_code == 200
         body = response.json()
         assert body["total_count"] == 0
         assert body["items"] == []
 
     def test_create_requires_auth(self, client: TestClient, sample_item_data: dict):
-        response = client.post("/sql-items/", json=sample_item_data)
+        response = client.post(f"{API_SQL}/", json=sample_item_data)
         assert response.status_code == 401
 
     def test_crud_flow_authenticated(
         self, auth_client: TestClient, sample_item_data: dict, sample_item_update_data: dict
     ):
-        create = auth_client.post("/sql-items/", json=sample_item_data)
+        create = auth_client.post(f"{API_SQL}/", json=sample_item_data)
         assert create.status_code == 201
         item = create.json()
         item_id = item["id"]
         assert item["name"] == sample_item_data["name"]
 
-        get_one = auth_client.get(f"/sql-items/{item_id}")
+        get_one = auth_client.get(f"{API_SQL}/{item_id}")
         assert get_one.status_code == 200
         assert get_one.json()["id"] == item_id
 
-        update = auth_client.put(f"/sql-items/{item_id}", json=sample_item_update_data)
+        update = auth_client.put(f"{API_SQL}/{item_id}", json=sample_item_update_data)
         assert update.status_code == 200
         assert update.json()["name"] == sample_item_update_data["name"]
 
         search = auth_client.get(
-            f"/sql-items/search/?q={sample_item_update_data['name']}"
+            f"{API_SQL}/search/?q={sample_item_update_data['name']}"
         )
         assert search.status_code == 200
         assert search.json()["total_count"] >= 1
 
-        delete = auth_client.delete(f"/sql-items/{item_id}")
+        delete = auth_client.delete(f"{API_SQL}/{item_id}")
         assert delete.status_code == 204
 
-        missing = auth_client.get(f"/sql-items/{item_id}")
+        missing = auth_client.get(f"{API_SQL}/{item_id}")
         assert missing.status_code == 404
+
+
+class TestApiAuth:
+    def test_token_and_bearer_crud(
+        self, client: TestClient, sample_item_data: dict
+    ):
+        bad = client.post(
+            "/api/auth/token",
+            json={"username": "nope", "password": "wrong"},
+        )
+        assert bad.status_code == 401
+
+        token_resp = client.post(
+            "/api/auth/token",
+            json={
+                "username": os.environ["DEMO_USERNAME"],
+                "password": os.environ["DEMO_PASSWORD"],
+            },
+        )
+        assert token_resp.status_code == 200
+        token = token_resp.json()["access_token"]
+        assert token_resp.json()["token_type"] == "bearer"
+        headers = {"Authorization": f"Bearer {token}"}
+
+        me = client.get("/api/auth/me", headers=headers)
+        assert me.status_code == 200
+        assert me.json()["username"] == os.environ["DEMO_USERNAME"]
+
+        create = client.post(f"{API_SQL}/", json=sample_item_data, headers=headers)
+        assert create.status_code == 201
+        item_id = create.json()["id"]
+
+        delete = client.delete(f"{API_SQL}/{item_id}", headers=headers)
+        assert delete.status_code == 204
+
+    def test_invalid_bearer_rejected(self, client: TestClient, sample_item_data: dict):
+        response = client.post(
+            f"{API_SQL}/",
+            json=sample_item_data,
+            headers={"Authorization": "Bearer not-a-real-token"},
+        )
+        assert response.status_code == 401
+
+    def test_me_requires_auth(self, client: TestClient):
+        assert client.get("/api/auth/me").status_code == 401
 
 
 class TestAuthWeb:
