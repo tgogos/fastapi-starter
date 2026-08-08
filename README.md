@@ -65,7 +65,7 @@ curl -s -X POST http://localhost:8000/api/auth/token \
 
 ## Stack notes
 
-- Dependencies: **uv** (`pyproject.toml` + committed `uv.lock`). No `requirements.txt`.
+- Python **3.14** (see `.python-version`); dependencies via **uv** (`pyproject.toml` + committed `uv.lock`). No `requirements.txt`.
 - Async-first (aiosqlite, Motor for the Mongo demo).
 - SQL without an ORM (`schema.sql` + parameterized queries).
 - Pydantic for request/response schemas only.
