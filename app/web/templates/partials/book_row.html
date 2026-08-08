@@ -20,6 +20,7 @@
         hx-delete="/ui/books/{{ book.id }}?page={{ page }}&size={{ size }}{% if q %}&q={{ q|urlencode }}{% endif %}"
         hx-target="#books-panel"
         hx-swap="innerHTML"
+        hx-indicator="#books-indicator"
         hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'
       >Delete</button>
     </div>

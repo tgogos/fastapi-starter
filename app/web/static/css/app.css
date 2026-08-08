@@ -52,22 +52,78 @@
   margin: 0;
 }
 
-.search-form {
-  margin-bottom: 0.25rem;
+.search-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
-/* Reserve space so showing/hiding the indicator does not jump the page. */
+.search-form {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+}
+
+.search-form label {
+  margin-bottom: 0;
+}
+
+/* HTMX: hide until the request element gets .htmx-request (see hx-indicator). */
 .htmx-indicator {
   opacity: 0;
-  height: 1.25rem;
-  margin: 0 0 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-bottom: 0.65rem;
   transition: opacity 120ms ease;
   pointer-events: none;
 }
 
 .htmx-request.htmx-indicator,
 .htmx-request .htmx-indicator {
-  opacity: 0.7;
+  opacity: 1;
+}
+
+/* CSS-only spinner — no images or JS. Must be non-inline for width/height. */
+.spinner {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 1.15rem;
+  height: 1.15rem;
+  border: 2px solid var(--pico-muted-border-color, #ccc);
+  border-top-color: var(--pico-primary, #0172ad);
+  border-radius: 50%;
+  vertical-align: middle;
+  animation: htmx-spin 0.65s linear infinite;
+}
+
+@keyframes htmx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+    border-top-color: var(--pico-muted-border-color, #ccc);
+    border-right-color: var(--pico-primary, #0172ad);
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .pagination {

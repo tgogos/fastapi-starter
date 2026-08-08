@@ -11,6 +11,7 @@
     hx-post="/ui/books"
     hx-target="#books-panel"
     hx-swap="innerHTML"
+    hx-indicator="#books-indicator"
   >
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="grid">
@@ -39,34 +40,45 @@
 {% endif %}
 
 {# Search stays outside #books-panel so HTMX swaps do not replace the input (keeps focus). #}
-<form
-  class="search-form"
-  method="get"
-  action="/ui/books"
-  hx-get="/ui/books"
-  hx-target="#books-panel"
-  hx-swap="innerHTML"
-  hx-trigger="keyup changed delay:300ms from:input[name='q'], search from:input[name='q']"
-  hx-push-url="true"
-  hx-indicator="#books-indicator"
->
-  <input type="hidden" name="page" value="1">
-  <input type="hidden" name="size" value="{{ size }}">
-  <label>
-    Search
-    <input
-      type="search"
-      name="q"
-      value="{{ q }}"
-      placeholder="Title or author"
-      aria-label="Search books"
-      autocomplete="off"
-    >
-  </label>
-  <noscript><button type="submit">Search</button></noscript>
-</form>
+<div class="search-toolbar">
+  <form
+    class="search-form"
+    method="get"
+    action="/ui/books"
+    hx-get="/ui/books"
+    hx-target="#books-panel"
+    hx-swap="innerHTML"
+    hx-trigger="keyup changed delay:300ms from:input[name='q'], search from:input[name='q']"
+    hx-push-url="true"
+    hx-indicator="#books-indicator"
+  >
+    <input type="hidden" name="page" value="1">
+    <input type="hidden" name="size" value="{{ size }}">
+    <label>
+      Search
+      <input
+        type="search"
+        name="q"
+        value="{{ q }}"
+        placeholder="Title or author"
+        aria-label="Search books"
+        autocomplete="off"
+      >
+    </label>
+    <noscript><button type="submit">Search</button></noscript>
+  </form>
 
-<p id="books-indicator" class="htmx-indicator" aria-live="polite">Loading…</p>
+  {# CSS-only spinner; HTMX toggles .htmx-request on this node via hx-indicator. #}
+  <div
+    id="books-indicator"
+    class="htmx-indicator"
+    role="status"
+    aria-live="polite"
+    aria-label="Loading"
+  >
+    <span class="spinner" aria-hidden="true"></span>
+  </div>
+</div>
 
 <div id="books-panel">
   {% include "partials/books_table.html" %}

@@ -86,7 +86,7 @@ Demos remain at `/items` and `/db-items`.
 - **`HX-Request` dual response** — one list route returns the full page or `partials/books_table.html`.
 - **Search** — `q` on title/author with debounce + `hx-push-url`. Keep the search form **outside** the HTMX swap target so the input is not replaced (focus stays while typing).
 - **Pagination** — `page` / `size` query params, same dual-response + push URL; swaps only the results panel.
-- **Indicator** — `hx-indicator` with reserved height (opacity toggle) to avoid layout jump.
+- **Indicator** — shared `#books-indicator` via `hx-indicator` (search, pagination, create). CSS-only spinner; HTMX toggles `.htmx-request` / opacity. Keep the indicator outside the swap target.
 - Progressive enhancement: pagination links keep usable `href`s.
 
 Out of scope for now (do not add without updating this doc): Alpine.js, HTMX out-of-band (`hx-swap-oob`) swaps, i18n.
