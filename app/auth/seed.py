@@ -8,8 +8,12 @@ from app.core import config
 async def seed_demo_user() -> None:
     if await count_users() > 0:
         return
-    await create_user(config.DEMO_USERNAME, hash_password(config.DEMO_PASSWORD))
+    await create_user(
+        config.DEMO_USERNAME,
+        hash_password(config.DEMO_PASSWORD),
+        role="admin",
+    )
     print(
-        f"✅ Seeded demo user {config.DEMO_USERNAME!r} "
+        f"✅ Seeded demo admin {config.DEMO_USERNAME!r} "
         f"(password from DEMO_PASSWORD / defaults)"
     )

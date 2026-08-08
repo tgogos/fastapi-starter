@@ -26,13 +26,15 @@ async def create_token(user_id: int) -> str:
 
 
 async def get_user_by_token(raw_token: str) -> Optional[dict[str, Any]]:
-    """Resolve a plaintext Bearer token to a user row (id, username), or None."""
+    """Resolve a plaintext Bearer token to a public user dict, or None."""
     if not raw_token:
         return None
+    from app.auth.users import normalize_role
+
     conn = get_connection()
     async with conn.execute(
         """
-        SELECT u.id, u.username
+        SELECT u.id, u.username, u.role
         FROM api_tokens t
         JOIN users u ON u.id = t.user_id
         WHERE t.token_hash = ?
@@ -42,7 +44,11 @@ async def get_user_by_token(raw_token: str) -> Optional[dict[str, Any]]:
         row = await cursor.fetchone()
     if row is None:
         return None
-    return {"id": row["id"], "username": row["username"]}
+    return {
+        "id": row["id"],
+        "username": row["username"],
+        "role": normalize_role(row["role"]),
+    }
 
 
 async def revoke_token(raw_token: str) -> bool:

@@ -59,4 +59,8 @@ async def revoke_current_token(
     summary="Current user (session or Bearer)",
 )
 async def me(user: dict = Depends(require_user)) -> UserPublic:
-    return UserPublic(id=user["id"], username=user["username"])
+    return UserPublic(
+        id=user["id"],
+        username=user["username"],
+        role=user.get("role", "viewer"),
+    )

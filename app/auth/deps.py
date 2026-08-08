@@ -1,4 +1,4 @@
-"""FastAPI dependencies for session auth, Bearer tokens, and CSRF."""
+"""FastAPI dependencies for session auth, Bearer tokens, roles, and CSRF."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.auth.exceptions import LoginRequired
 from app.auth.tokens import get_user_by_token
-from app.auth.users import get_user_by_id
+from app.auth.users import get_user_by_id, public_user, role_at_least
 
 SESSION_USER_KEY = "user_id"
 SESSION_CSRF_KEY = "csrf_token"
@@ -54,7 +54,6 @@ async def verify_csrf(request: Request) -> None:
         )
 
 
-# Backwards-friendly alias used in __init__
 ensure_csrf = verify_csrf
 
 
@@ -67,10 +66,9 @@ async def get_session_user(request: Request) -> Optional[dict[str, Any]]:
     if user is None:
         request.session.pop(SESSION_USER_KEY, None)
         return None
-    return {"id": user["id"], "username": user["username"]}
+    return public_user(user)
 
 
-# Alias used by HTML auth routes
 get_current_user = get_session_user
 
 
@@ -99,11 +97,7 @@ async def require_user(
         Optional[HTTPAuthorizationCredentials], Depends(bearer_scheme)
     ],
 ) -> dict[str, Any]:
-    """Require auth for JSON API routes (Bearer or session).
-
-    Session-authenticated mutating requests must include CSRF
-    (``X-CSRF-Token`` header or form field). Bearer requests skip CSRF.
-    """
+    """Require auth for JSON API routes (Bearer or session)."""
     used_bearer = bool(credentials and credentials.credentials)
 
     if used_bearer:
@@ -130,9 +124,51 @@ async def require_user(
     return user
 
 
+async def require_editor(
+    user: dict[str, Any] = Depends(require_user),
+) -> dict[str, Any]:
+    if not role_at_least(user["role"], "editor"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Editor or admin role required",
+        )
+    return user
+
+
+async def require_admin(
+    user: dict[str, Any] = Depends(require_user),
+) -> dict[str, Any]:
+    if not role_at_least(user["role"], "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin role required",
+        )
+    return user
+
+
 async def require_user_html(request: Request) -> dict[str, Any]:
     """Require login for HTML routes; redirects via LoginRequired handler."""
     user = await get_session_user(request)
     if user is None:
         raise LoginRequired()
+    return user
+
+
+async def require_editor_html(request: Request) -> dict[str, Any]:
+    user = await require_user_html(request)
+    if not role_at_least(user["role"], "editor"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Editor or admin role required",
+        )
+    return user
+
+
+async def require_admin_html(request: Request) -> dict[str, Any]:
+    user = await require_user_html(request)
+    if not role_at_least(user["role"], "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin role required",
+        )
     return user

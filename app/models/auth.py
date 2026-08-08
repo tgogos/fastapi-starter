@@ -16,3 +16,4 @@ class TokenResponse(BaseModel):
 class UserPublic(BaseModel):
     id: int
     username: str
+    role: str = "viewer"
