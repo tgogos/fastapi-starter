@@ -15,6 +15,8 @@ from app.auth.users import get_user_by_id
 SESSION_USER_KEY = "user_id"
 SESSION_CSRF_KEY = "csrf_token"
 
+_MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
 bearer_scheme = HTTPBearer(
     auto_error=False,
     description="Opaque token from POST /api/auth/token",
@@ -39,7 +41,7 @@ async def verify_csrf(request: Request) -> None:
         )
 
     provided = request.headers.get("X-CSRF-Token")
-    if not provided and request.method in ("POST", "PUT", "PATCH", "DELETE"):
+    if not provided and request.method in _MUTATING_METHODS:
         content_type = request.headers.get("content-type", "")
         if "application/x-www-form-urlencoded" in content_type or "multipart/form-data" in content_type:
             form = await request.form()
@@ -92,15 +94,39 @@ async def get_api_user(
 
 
 async def require_user(
-    user: Optional[dict[str, Any]] = Depends(get_api_user),
+    request: Request,
+    credentials: Annotated[
+        Optional[HTTPAuthorizationCredentials], Depends(bearer_scheme)
+    ],
 ) -> dict[str, Any]:
-    """Require auth for JSON API routes (Bearer or session)."""
+    """Require auth for JSON API routes (Bearer or session).
+
+    Session-authenticated mutating requests must include CSRF
+    (``X-CSRF-Token`` header or form field). Bearer requests skip CSRF.
+    """
+    used_bearer = bool(credentials and credentials.credentials)
+
+    if used_bearer:
+        user = await get_user_by_token(credentials.credentials)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or unknown token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    else:
+        user = await get_session_user(request)
+
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    if not used_bearer and request.method in _MUTATING_METHODS:
+        await verify_csrf(request)
+
     return user
 
 

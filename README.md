@@ -38,8 +38,9 @@ make down     # stop
 
 ## Auth in brief
 
-- **Browser:** cookie session + CSRF on mutating HTML/HTMX (`/auth/login`, `/ui/...`).
-- **API:** `POST /api/auth/token` with username/password → opaque Bearer token; use **Authorize** in `/docs`. `DELETE /api/auth/token` revokes it.
+- **Browser / HTMX:** cookie session + CSRF on mutating HTML (`/auth`, `/ui`).
+- **API:** Bearer via `POST /api/auth/token`, or session cookie. Session writes to `/api` need `X-CSRF-Token` (same token as `<meta name="csrf-token">` on UI pages). Bearer skips CSRF.
+- **Page JS → `/api`:** `credentials: "include"` + `X-CSRF-Token`, or `Authorization: Bearer …`.
 
 ```bash
 curl -s -X POST http://localhost:8000/api/auth/token \

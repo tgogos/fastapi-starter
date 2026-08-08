@@ -30,7 +30,7 @@ await conn.execute("INSERT INTO ...")
 ## URLs and auth intent
 
 - `/api` → JSON (machines); `/auth` → HTML session; `/ui` → pages + HTMX partials (no `/htmx` prefix).
-- Browsers: session + CSRF. API: opaque Bearer tokens in SQLite (not JWT by default). JSON `require_user` accepts session or Bearer.
+- Browsers: session + CSRF. API: opaque Bearer tokens in SQLite (not JWT by default). `require_user` accepts session or Bearer; **session + mutating `/api` requires CSRF**; Bearer does not.
 - Do not rename the `items` domain until `ENGINEERING.md` says so.
 
 ## When you change architecture

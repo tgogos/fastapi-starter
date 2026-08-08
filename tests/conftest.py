@@ -74,7 +74,6 @@ def auth_client(client: TestClient):
     """Client logged in as the demo user (session cookie)."""
     login_page = client.get("/auth/login")
     assert login_page.status_code == 200
-    # Extract csrf from cookie session by hitting login form — parse token from HTML
     html = login_page.text
     marker = 'name="csrf_token" value="'
     assert marker in html
@@ -91,3 +90,13 @@ def auth_client(client: TestClient):
     )
     assert response.status_code == 303
     return client
+
+
+def session_csrf_headers(client: TestClient) -> dict[str, str]:
+    """CSRF header for session-authenticated JSON/API calls (from UI meta tag)."""
+    page = client.get("/ui/items")
+    assert page.status_code == 200
+    marker = 'name="csrf-token" content="'
+    assert marker in page.text
+    token = page.text.split(marker, 1)[1].split('"', 1)[0]
+    return {"X-CSRF-Token": token}

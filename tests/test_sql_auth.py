@@ -4,6 +4,8 @@ import os
 
 from fastapi.testclient import TestClient
 
+from tests.conftest import session_csrf_headers
+
 API_SQL = "/api/sql-items"
 
 
@@ -19,10 +21,20 @@ class TestSqlItemsApi:
         response = client.post(f"{API_SQL}/", json=sample_item_data)
         assert response.status_code == 401
 
+    def test_session_write_requires_csrf(
+        self, auth_client: TestClient, sample_item_data: dict
+    ):
+        response = auth_client.post(f"{API_SQL}/", json=sample_item_data)
+        assert response.status_code == 403
+
     def test_crud_flow_authenticated(
         self, auth_client: TestClient, sample_item_data: dict, sample_item_update_data: dict
     ):
-        create = auth_client.post(f"{API_SQL}/", json=sample_item_data)
+        headers = session_csrf_headers(auth_client)
+
+        create = auth_client.post(
+            f"{API_SQL}/", json=sample_item_data, headers=headers
+        )
         assert create.status_code == 201
         item = create.json()
         item_id = item["id"]
@@ -32,7 +44,9 @@ class TestSqlItemsApi:
         assert get_one.status_code == 200
         assert get_one.json()["id"] == item_id
 
-        update = auth_client.put(f"{API_SQL}/{item_id}", json=sample_item_update_data)
+        update = auth_client.put(
+            f"{API_SQL}/{item_id}", json=sample_item_update_data, headers=headers
+        )
         assert update.status_code == 200
         assert update.json()["name"] == sample_item_update_data["name"]
 
@@ -42,7 +56,7 @@ class TestSqlItemsApi:
         assert search.status_code == 200
         assert search.json()["total_count"] >= 1
 
-        delete = auth_client.delete(f"{API_SQL}/{item_id}")
+        delete = auth_client.delete(f"{API_SQL}/{item_id}", headers=headers)
         assert delete.status_code == 204
 
         missing = auth_client.get(f"{API_SQL}/{item_id}")
