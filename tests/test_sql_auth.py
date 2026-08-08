@@ -172,3 +172,10 @@ class TestHealthSqlite:
         body = response.json()
         assert "sqlite_ping" in body
         assert body["sqlite_ping"] == "ok"
+
+
+class TestRoot:
+    def test_root_redirects_to_ui(self, client: TestClient):
+        response = client.get("/", follow_redirects=False)
+        assert response.status_code == 303
+        assert response.headers["location"] == "/ui/items"

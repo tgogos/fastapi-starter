@@ -16,7 +16,7 @@ from app.web.paths import STATIC_DIR
 
 description = """
 ### Root
-- Root endpoint of the API. Just a welcome message.
+- `/` redirects to the HTMX UI (`/ui/items`).
 - Health-check endpoint.
 
 ### Items (demo)
@@ -27,6 +27,7 @@ description = """
 
 ### API auth
 - `POST /api/auth/token` — username/password → opaque Bearer token.
+- `DELETE /api/auth/token` — revoke the current Bearer token.
 - `GET /api/auth/me` — current user (Bearer or session).
 
 ### SQL Items (primary)
@@ -34,8 +35,9 @@ description = """
 - Writes require Bearer token or session cookie.
 
 ### Web UI
-- Pico CSS + HTMX under `/ui`; browser login under `/auth`.
+- Pico CSS + HTMX under `/ui`; browser login under `/auth` (not listed in this schema).
 """
+
 
 
 @asynccontextmanager
@@ -83,6 +85,10 @@ app.include_router(db_items.router, prefix="/db-items", tags=["database-items"])
 app.include_router(api_auth.router, prefix="/api/auth", tags=["auth-api"])
 app.include_router(sql_items.router, prefix="/api/sql-items", tags=["sql-items"])
 
-# HTML / HTMX (removable with app/web/)
-app.include_router(auth_routes.router, prefix="/auth", tags=["auth-web"])
-app.include_router(items_routes.router, prefix="/ui", tags=["ui"])
+# HTML / HTMX (removable with app/web/; omitted from OpenAPI — browser session, not Bearer)
+app.include_router(
+    auth_routes.router, prefix="/auth", tags=["auth-web"], include_in_schema=False
+)
+app.include_router(
+    items_routes.router, prefix="/ui", tags=["ui"], include_in_schema=False
+)

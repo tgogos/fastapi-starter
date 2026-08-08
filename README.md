@@ -53,7 +53,7 @@ fastapi-starter/
 make dotenv   # copies .env.example → .env
 make upd      # build + start (detached)
 
-# API:        http://localhost:8000
+# API:        http://localhost:8000  (redirects to /ui/items)
 # Docs:       http://localhost:8000/docs  (Authorize with Bearer from /api/auth/token)
 # Web UI:     http://localhost:8000/ui/items  (login first)
 # Login:      http://localhost:8000/auth/login
