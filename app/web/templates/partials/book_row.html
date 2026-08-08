@@ -22,8 +22,9 @@
       <button
         type="button"
         class="outline contrast js-confirm-delete"
-        data-confirm="Delete this book?"
+        data-confirm="Delete “{{ book.title }}”? This cannot be undone."
         hx-delete="/ui/books/{{ book.id }}?{{ results_query }}"
+        hx-trigger="confirmed-delete"
         hx-target="#books-panel"
         hx-swap="innerHTML"
         hx-indicator="#books-indicator"

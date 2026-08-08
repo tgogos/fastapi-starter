@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, Query, Request
@@ -587,11 +588,15 @@ async def delete_book(
     data = await _reload(page)
     if data["total"] and page > data["total_pages"]:
         data = await _reload(data["total_pages"])
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request,
         "partials/books_table.html",
         _ctx(request, user, **data),
     )
+    response.headers["HX-Trigger"] = json.dumps(
+        {"showToast": {"message": "Book deleted", "level": "ok"}}
+    )
+    return response
 
 
 @router.get("/admin/users", response_class=HTMLResponse)

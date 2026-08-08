@@ -94,6 +94,8 @@ Books include scalars (`category`, `isbn`, `page_count`, `available`) and `added
 - **Pagination** — `page` / `size` query params, same dual-response + push URL; swaps only the results panel.
 - **Indicator** — shared `#books-indicator` via `hx-indicator` (search, pagination, create). CSS-only spinner; HTMX toggles `.htmx-request` / opacity. Keep the indicator outside the swap target.
 - Progressive enhancement: pagination links keep usable `href`s.
+- **Confirm modal** — Pico `<dialog>` + small JS (`app/web/static/js/app.js`); delete buttons use `hx-trigger="confirmed-delete"` after the user confirms (no `window.confirm`).
+- **Toasts** — minimal custom CSS toasts; server sets `HX-Trigger: {"showToast": {...}}` (e.g. after delete).
 
 Out of scope for now (do not add without updating this doc): Alpine.js, HTMX out-of-band (`hx-swap-oob`) swaps, i18n.
 

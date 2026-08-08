@@ -46,5 +46,21 @@
   <footer class="container">
     <small>JSON API: <a href="/docs">/docs</a> · Health: <a href="/health">/health</a></small>
   </footer>
+
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-relevant="additions"></div>
+
+  <dialog id="confirm-dialog">
+    <article>
+      <header>
+        <button type="button" aria-label="Close" rel="prev" data-confirm-cancel></button>
+        <h3>Confirm</h3>
+      </header>
+      <p id="confirm-dialog-message">Are you sure?</p>
+      <footer>
+        <button type="button" class="secondary" data-confirm-cancel>Cancel</button>
+        <button type="button" id="confirm-dialog-ok" class="contrast" data-confirm-ok autofocus>Delete</button>
+      </footer>
+    </article>
+  </dialog>
 </body>
 </html>

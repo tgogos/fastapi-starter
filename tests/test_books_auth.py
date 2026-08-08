@@ -248,6 +248,21 @@ class TestAuthWeb:
         )
         assert page.status_code == 200
 
+    def test_ui_includes_confirm_dialog_and_toast_region(
+        self, auth_client: TestClient
+    ):
+        headers = session_csrf_headers(auth_client)
+        auth_client.post(
+            f"{API_BOOKS}/",
+            json={"title": "Has Delete", "author": "A", "category": "other"},
+            headers=headers,
+        )
+        page = auth_client.get("/ui/books")
+        assert page.status_code == 200
+        assert 'id="confirm-dialog"' in page.text
+        assert 'id="toast-region"' in page.text
+        assert 'hx-trigger="confirmed-delete"' in page.text
+
     def test_advanced_search_page(self, auth_client: TestClient):
         headers = session_csrf_headers(auth_client)
         auth_client.post(
@@ -277,6 +292,28 @@ class TestAuthWeb:
         assert "Active filters" in filtered.text
         assert "Fantasy" in filtered.text
         assert "<html" not in filtered.text.lower()
+
+    def test_ui_delete_triggers_toast_header(self, auth_client: TestClient):
+        headers = session_csrf_headers(auth_client)
+        created = auth_client.post(
+            f"{API_BOOKS}/",
+            json={
+                "title": "Toast Delete",
+                "author": "Z",
+                "category": "other",
+            },
+            headers=headers,
+        )
+        assert created.status_code == 201
+        book_id = created.json()["id"]
+        deleted = auth_client.delete(
+            f"/ui/books/{book_id}?page=1&size=10&return_to=list",
+            headers={**headers, "HX-Request": "true"},
+        )
+        assert deleted.status_code == 200
+        assert "HX-Trigger" in deleted.headers
+        assert "showToast" in deleted.headers["HX-Trigger"]
+        assert "Book deleted" in deleted.headers["HX-Trigger"]
 
     def test_login_logout(self, client: TestClient):
         page = client.get("/auth/login")
