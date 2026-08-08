@@ -2,34 +2,6 @@
 <p class="flash flash-error" role="alert">{{ form_error }} <button type="button" class="flash-dismiss" aria-label="Dismiss">×</button></p>
 {% endif %}
 
-<form
-  class="search-form"
-  method="get"
-  action="/ui/books"
-  hx-get="/ui/books"
-  hx-target="#books-panel"
-  hx-swap="innerHTML"
-  hx-trigger="keyup changed delay:300ms from:input[name='q'], search from:input[name='q']"
-  hx-push-url="true"
-  hx-indicator="#books-indicator"
->
-  <input type="hidden" name="page" value="1">
-  <input type="hidden" name="size" value="{{ size }}">
-  <label>
-    Search
-    <input
-      type="search"
-      name="q"
-      value="{{ q }}"
-      placeholder="Title or author"
-      aria-label="Search books"
-    >
-  </label>
-  <noscript><button type="submit">Search</button></noscript>
-</form>
-
-<p id="books-indicator" class="htmx-indicator" aria-live="polite">Loading…</p>
-
 <figure>
   <table>
     <thead>

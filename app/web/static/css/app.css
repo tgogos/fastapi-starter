@@ -53,18 +53,21 @@
 }
 
 .search-form {
-  margin-bottom: 1rem;
+  margin-bottom: 0.25rem;
 }
 
+/* Reserve space so showing/hiding the indicator does not jump the page. */
 .htmx-indicator {
-  display: none;
-  opacity: 0.7;
-  margin: 0.5rem 0;
+  opacity: 0;
+  height: 1.25rem;
+  margin: 0 0 0.5rem;
+  transition: opacity 120ms ease;
+  pointer-events: none;
 }
 
 .htmx-request.htmx-indicator,
 .htmx-request .htmx-indicator {
-  display: block;
+  opacity: 0.7;
 }
 
 .pagination {
