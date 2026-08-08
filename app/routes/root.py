@@ -20,7 +20,7 @@ router = APIRouter()
 )
 async def root():
     """Send browsers to the primary UI (anonymous users then hit /auth/login)."""
-    return RedirectResponse(url="/ui/items", status_code=303)
+    return RedirectResponse(url="/ui/books", status_code=303)
 
 
 @router.get(

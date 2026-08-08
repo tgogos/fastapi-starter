@@ -14,11 +14,17 @@
   <header class="container">
     <nav>
       <ul>
-        <li><strong><a href="/ui/items">FastAPI Starter</a></strong></li>
+        <li><strong><a href="/ui/books">FastAPI Starter</a></strong></li>
+        {% if user %}
+        <li><a href="/ui/books">Books</a></li>
+        {% if user.role == 'admin' %}
+        <li><a href="/ui/admin/users">Admin</a></li>
+        {% endif %}
+        {% endif %}
       </ul>
       <ul>
         {% if user %}
-        <li><span class="nav-user">{{ user.username }}</span></li>
+        <li><span class="nav-user">{{ user.username }} · {{ user.role }}</span></li>
         <li>
           <form action="/auth/logout" method="post" class="inline-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

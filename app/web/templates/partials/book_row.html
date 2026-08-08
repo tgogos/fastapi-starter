@@ -1,0 +1,28 @@
+<tr id="book-row-{{ book.id }}">
+  <td>{{ book.title }}</td>
+  <td>{{ book.author }}</td>
+  <td>{{ book.year if book.year is not none else "—" }}</td>
+  <td>{{ book.notes or "—" }}</td>
+  {% if can_edit %}
+  <td>
+    <div class="actions">
+      <button
+        type="button"
+        class="outline"
+        hx-get="/ui/books/{{ book.id }}/edit"
+        hx-target="#book-row-{{ book.id }}"
+        hx-swap="outerHTML"
+      >Edit</button>
+      <button
+        type="button"
+        class="outline contrast js-confirm-delete"
+        data-confirm="Delete this book?"
+        hx-delete="/ui/books/{{ book.id }}?page={{ page }}&size={{ size }}{% if q %}&q={{ q|urlencode }}{% endif %}"
+        hx-target="#books-panel"
+        hx-swap="innerHTML"
+        hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'
+      >Delete</button>
+    </div>
+  </td>
+  {% endif %}
+</tr>

@@ -25,7 +25,7 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 async def login_page(request: Request):
     user = await get_current_user(request)
     if user:
-        return RedirectResponse(url="/ui/items", status_code=303)
+        return RedirectResponse(url="/ui/books", status_code=303)
     csrf_token = get_or_create_csrf_token(request)
     return templates.TemplateResponse(
         request,
@@ -64,7 +64,7 @@ async def login_submit(
     request.session[SESSION_USER_KEY] = db_user["id"]
     # Rotate CSRF after authentication
     request.session[SESSION_CSRF_KEY] = secrets.token_urlsafe(32)
-    return RedirectResponse(url="/ui/items", status_code=303)
+    return RedirectResponse(url="/ui/books", status_code=303)
 
 
 @router.post("/logout", dependencies=[Depends(verify_csrf)])

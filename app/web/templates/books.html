@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Books · FastAPI Starter{% endblock %}
+{% block content %}
+<h1>Books</h1>
+<p>HTMX UI backed by SQLite. Search and pagination update the list without a full page reload.</p>
+
+{% if can_edit %}
+<article>
+  <h2>Add book</h2>
+  <form
+    hx-post="/ui/books"
+    hx-target="#books-panel"
+    hx-swap="innerHTML"
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="grid">
+      <label>
+        Title
+        <input type="text" name="title" required maxlength="200">
+      </label>
+      <label>
+        Author
+        <input type="text" name="author" required maxlength="200">
+      </label>
+    </div>
+    <div class="grid">
+      <label>
+        Year
+        <input type="number" name="year" min="0" max="9999">
+      </label>
+      <label>
+        Notes
+        <input type="text" name="notes" maxlength="2000">
+      </label>
+    </div>
+    <button type="submit">Create</button>
+  </form>
+</article>
+{% endif %}
+
+<div id="books-panel">
+  {% include "partials/books_table.html" %}
+</div>
+{% endblock %}

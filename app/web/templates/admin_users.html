@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Users · Admin · FastAPI Starter{% endblock %}
+{% block content %}
+<h1>Users</h1>
+<p>Change roles for staff accounts. Admins can edit books and manage users.</p>
+
+<div id="admin-users-panel">
+  {% include "partials/admin_users_table.html" %}
+</div>
+{% endblock %}

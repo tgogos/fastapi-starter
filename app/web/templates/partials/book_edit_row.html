@@ -1,0 +1,42 @@
+<tr id="book-row-{{ book.id }}">
+  <td colspan="5">
+    <form
+      class="edit-form"
+      hx-put="/ui/books/{{ book.id }}"
+      hx-target="#book-row-{{ book.id }}"
+      hx-swap="outerHTML"
+    >
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <div class="grid">
+        <label>
+          Title
+          <input type="text" name="title" value="{{ book.title }}" required maxlength="200">
+        </label>
+        <label>
+          Author
+          <input type="text" name="author" value="{{ book.author }}" required maxlength="200">
+        </label>
+      </div>
+      <div class="grid">
+        <label>
+          Year
+          <input type="number" name="year" value="{{ book.year if book.year is not none else '' }}" min="0" max="9999">
+        </label>
+        <label>
+          Notes
+          <input type="text" name="notes" value="{{ book.notes or '' }}" maxlength="2000">
+        </label>
+      </div>
+      <div class="actions">
+        <button type="submit">Save</button>
+        <button
+          type="button"
+          class="outline"
+          hx-get="/ui/books/{{ book.id }}/row"
+          hx-target="#book-row-{{ book.id }}"
+          hx-swap="outerHTML"
+        >Cancel</button>
+      </div>
+    </form>
+  </td>
+</tr>

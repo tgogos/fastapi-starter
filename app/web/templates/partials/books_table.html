@@ -1,0 +1,91 @@
+{% if form_error %}
+<p class="flash flash-error" role="alert">{{ form_error }} <button type="button" class="flash-dismiss" aria-label="Dismiss">×</button></p>
+{% endif %}
+
+<form
+  class="search-form"
+  method="get"
+  action="/ui/books"
+  hx-get="/ui/books"
+  hx-target="#books-panel"
+  hx-swap="innerHTML"
+  hx-trigger="keyup changed delay:300ms from:input[name='q'], search from:input[name='q']"
+  hx-push-url="true"
+  hx-indicator="#books-indicator"
+>
+  <input type="hidden" name="page" value="1">
+  <input type="hidden" name="size" value="{{ size }}">
+  <label>
+    Search
+    <input
+      type="search"
+      name="q"
+      value="{{ q }}"
+      placeholder="Title or author"
+      aria-label="Search books"
+    >
+  </label>
+  <noscript><button type="submit">Search</button></noscript>
+</form>
+
+<p id="books-indicator" class="htmx-indicator" aria-live="polite">Loading…</p>
+
+<figure>
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Title</th>
+        <th scope="col">Author</th>
+        <th scope="col">Year</th>
+        <th scope="col">Notes</th>
+        {% if can_edit %}
+        <th scope="col">Actions</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody id="books-tbody">
+      {% if books %}
+        {% for book in books %}
+          {% include "partials/book_row.html" %}
+        {% endfor %}
+      {% else %}
+        <tr class="empty-row">
+          <td colspan="{% if can_edit %}5{% else %}4{% endif %}"><em>No books found.</em></td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+  <figcaption>
+    {{ total }} book{% if total != 1 %}s{% endif %}
+    {% if total_pages %} · page {{ page }} of {{ total_pages }}{% endif %}
+  </figcaption>
+</figure>
+
+{% if total_pages and total_pages > 1 %}
+<nav class="pagination" aria-label="Books pagination">
+  {% if prev_url %}
+  <a
+    href="{{ prev_url }}"
+    hx-get="{{ prev_url }}"
+    hx-target="#books-panel"
+    hx-swap="innerHTML"
+    hx-push-url="true"
+    hx-indicator="#books-indicator"
+  >Previous</a>
+  {% else %}
+  <span aria-disabled="true">Previous</span>
+  {% endif %}
+  {% if next_url %}
+  <a
+    href="{{ next_url }}"
+    hx-get="{{ next_url }}"
+    hx-target="#books-panel"
+    hx-swap="innerHTML"
+    hx-push-url="true"
+    hx-indicator="#books-indicator"
+  >Next</a>
+  {% else %}
+  <span aria-disabled="true">Next</span>
+  {% endif %}
+</nav>
+{% endif %}
