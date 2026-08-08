@@ -19,6 +19,7 @@ os.environ.setdefault("MONGO_HOST", "mongodb")
 import pytest
 from fastapi.testclient import TestClient
 
+from app.auth.passwords import hash_password
 from app.main import app
 from app.routes.items import items_storage
 
@@ -39,22 +40,31 @@ def clear_items_storage():
 
 
 @pytest.fixture(autouse=True)
-def clear_sql_items(client):
-    """Clear SQLite sql_items between tests (keep seeded users)."""
+def clear_books_and_extra_users(client):
+    """Clear books and non-demo users between tests; keep demo admin."""
     db_path = Path(os.environ["DATABASE_URL"].removeprefix("sqlite:///"))
-    conn = sqlite3.connect(db_path)
-    conn.execute("DELETE FROM sql_items")
-    conn.commit()
-    conn.close()
+    demo = os.environ["DEMO_USERNAME"]
+
+    def _reset():
+        conn = sqlite3.connect(db_path)
+        conn.execute("DELETE FROM books")
+        conn.execute("DELETE FROM api_tokens")
+        conn.execute("DELETE FROM users WHERE username != ?", (demo,))
+        conn.execute(
+            "UPDATE users SET role = 'admin' WHERE username = ?",
+            (demo,),
+        )
+        conn.commit()
+        conn.close()
+
+    _reset()
     yield
-    conn = sqlite3.connect(db_path)
-    conn.execute("DELETE FROM sql_items")
-    conn.commit()
-    conn.close()
+    _reset()
 
 
 @pytest.fixture
 def sample_item_data():
+    """In-memory / Mongo demo item payload."""
     return {
         "name": "Test Item",
         "description": "A test item for testing purposes",
@@ -70,8 +80,28 @@ def sample_item_update_data():
 
 
 @pytest.fixture
+def sample_book_data():
+    return {
+        "title": "Test Book",
+        "author": "Ada Lovelace",
+        "year": 1842,
+        "notes": "A test book",
+    }
+
+
+@pytest.fixture
+def sample_book_update_data():
+    return {
+        "title": "Updated Book",
+        "author": "Grace Hopper",
+        "year": 1952,
+        "notes": "Updated notes",
+    }
+
+
+@pytest.fixture
 def auth_client(client: TestClient):
-    """Client logged in as the demo user (session cookie)."""
+    """Client logged in as the demo admin (session cookie)."""
     login_page = client.get("/auth/login")
     assert login_page.status_code == 200
     html = login_page.text
@@ -94,9 +124,39 @@ def auth_client(client: TestClient):
 
 def session_csrf_headers(client: TestClient) -> dict[str, str]:
     """CSRF header for session-authenticated JSON/API calls (from UI meta tag)."""
-    page = client.get("/ui/items")
+    page = client.get("/ui/books")
     assert page.status_code == 200
     marker = 'name="csrf-token" content="'
     assert marker in page.text
     token = page.text.split(marker, 1)[1].split('"', 1)[0]
     return {"X-CSRF-Token": token}
+
+
+def create_user_sync(username: str, password: str, role: str = "viewer") -> None:
+    """Insert a user via sync sqlite (tests)."""
+    db_path = Path(os.environ["DATABASE_URL"].removeprefix("sqlite:///"))
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+        (username, hash_password(password), role),
+    )
+    conn.commit()
+    conn.close()
+
+
+def login_as(client: TestClient, username: str, password: str) -> TestClient:
+    """Replace session by logging in as the given user."""
+    client.cookies.clear()
+    login_page = client.get("/auth/login")
+    csrf = login_page.text.split('name="csrf_token" value="', 1)[1].split('"', 1)[0]
+    response = client.post(
+        "/auth/login",
+        data={
+            "username": username,
+            "password": password,
+            "csrf_token": csrf,
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    return client
