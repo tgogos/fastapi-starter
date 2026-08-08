@@ -1,0 +1,38 @@
+---
+description: Core FastAPI starter conventions (async, SQL, primary path)
+alwaysApply: true
+---
+
+# Core conventions
+
+Follow `docs/ENGINEERING.md`. Summary for every change:
+
+## Non-negotiables
+
+- Async-first request path (aiosqlite / Motor). No new sync I/O in handlers (bcrypt is the known exception).
+- No ORM. Parameterized SQL in helpers; schema in `app/db/schema.sql`.
+- Pydantic = request/response only, not the database layer.
+- Keep Mongo and in-memory demos thin and removable. Do not “upgrade” them unless asked.
+
+## Primary path style
+
+Thin routes → helpers → response models. Copy `app/routes/sql_items.py` + `app/db/items.py` + `app/web/`, not fat Mongo/in-memory handlers.
+
+```python
+# ✅ GOOD — route delegates
+row = await items_repo.create_item(item.name, item.description)
+return _parse_response(row)
+
+# ❌ BAD — SQL / business logic stuffed in the route
+await conn.execute("INSERT INTO ...")
+```
+
+## URLs and auth intent
+
+- `/api` → JSON (machines); `/auth` → HTML session; `/ui` → pages + HTMX partials (no `/htmx` prefix).
+- Browsers: session + CSRF. API: opaque Bearer tokens in SQLite (not JWT by default). `require_user` accepts session or Bearer; **session + mutating `/api` requires CSRF**; Bearer does not.
+- Do not rename the `items` domain until `ENGINEERING.md` says so.
+
+## When you change architecture
+
+Update `docs/ENGINEERING.md` in the same change. Stay in scope; do not invent new patterns.

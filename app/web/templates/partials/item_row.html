@@ -1,0 +1,25 @@
+<tr id="item-row-{{ item.id }}">
+  <td>{{ item.name }}</td>
+  <td>{{ item.description or "—" }}</td>
+  <td><small>{{ item.updated_at }}</small></td>
+  <td>
+    <div class="actions">
+      <button
+        type="button"
+        class="outline"
+        hx-get="/ui/items/{{ item.id }}/edit"
+        hx-target="#item-row-{{ item.id }}"
+        hx-swap="outerHTML"
+      >Edit</button>
+      <button
+        type="button"
+        class="outline contrast js-confirm-delete"
+        data-confirm="Delete this item?"
+        hx-delete="/ui/items/{{ item.id }}"
+        hx-target="#items-panel"
+        hx-swap="innerHTML"
+        hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'
+      >Delete</button>
+    </div>
+  </td>
+</tr>

@@ -12,10 +12,12 @@ services:
     volumes:
       - ./app:/code/app  # Mount app directory for hot reload
       - ./tests:/code/tests  # Mount tests directory for pytest
+      - ./data:/code/data  # SQLite database file
     environment:
       - RELOAD=1  # Enable hot reload
     env_file:
       - .env
+    working_dir: /code
 
   mongodb:
     image: mongo:7.0

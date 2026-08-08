@@ -10,6 +10,8 @@ services:
       - mongodb
     env_file:
       - .env
+    volumes:
+      - sqlite_data:/code/data
 
   mongodb:
     image: mongo:7.0
@@ -24,3 +26,4 @@ services:
 
 volumes:
   mongodb_data:
+  sqlite_data:
