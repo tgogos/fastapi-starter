@@ -19,6 +19,9 @@ downv:
 test:
 	docker compose -f docker-compose.dev.yml exec fastapi-starter pytest
 
+seed:
+	docker compose -f docker-compose.dev.yml exec fastapi-starter python -m app.seed
+
 # Local tooling (optional; Docker remains the default workflow)
 sync:
 	uv sync --all-groups

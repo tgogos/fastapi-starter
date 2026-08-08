@@ -36,6 +36,8 @@ Enforcement is always on the server (`require_user` / `require_editor` / `requir
 
 The seeded demo user is an **admin** (`DEMO_USERNAME` / `DEMO_PASSWORD`).
 
+Startup only ensures that admin when `users` is empty. Richer demo data (sample `viewer` / `editor` accounts and books) is opt-in via `python -m app.seed` / `make seed` — idempotent (skips existing usernames; inserts only missing sample book titles). Sample list is larger than the UI page size (10) so pagination is easy to exercise.
+
 ## Code style (primary path)
 
 Write primary-path code like the SQL and web layers:
