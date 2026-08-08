@@ -11,7 +11,7 @@ Sessions, CSRF, and Bearer explained: [`docs/auth.md`](docs/auth.md).
 
 | | Role |
 |--|------|
-| **Primary** | SQLite · session + CSRF for `/ui` and `/auth` · Bearer (or session) for `/api/sql-items` · Pico/HTMX UI |
+| **Primary** | SQLite **books** · roles (viewer / editor / admin) · session + CSRF for `/ui` and `/auth` · Bearer (or session) for `/api/books` · Pico/HTMX UI |
 | **Demos** (thin, removable) | `/items` in-memory CRUD · `/db-items` MongoDB CRUD — teaching surfaces, not the main app |
 
 Fork and grow the primary path. Keep demos minimal or delete them.
@@ -24,13 +24,15 @@ Fork and grow the primary path. Keep demos minimal or delete them.
 make dotenv   # .env.example → .env
 make upd      # build + start (detached)
 
-# http://localhost:8000           → redirects to /ui/items
-# http://localhost:8000/ui/items  → UI (login first)
+# http://localhost:8000           → redirects to /ui/books
+# http://localhost:8000/ui/books  → UI (login first)
 # http://localhost:8000/auth/login
 # http://localhost:8000/docs      → OpenAPI (JSON API only)
 ```
 
-Demo user (seeded when `users` is empty): `DEMO_USERNAME` / `DEMO_PASSWORD` (defaults `admin` / `admin123`). Change these and **`SECRET_KEY`** before any shared deploy.
+Demo user (seeded when `users` is empty) is an **admin**: `DEMO_USERNAME` / `DEMO_PASSWORD` (defaults `admin` / `admin123`). Change these and **`SECRET_KEY`** before any shared deploy.
+
+After pulling schema changes, delete local SQLite files under `data/` (and restart) if the app fails on missing columns/tables — this starter recreates schema rather than migrating.
 
 ```bash
 make test     # pytest in the app container

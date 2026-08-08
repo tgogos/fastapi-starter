@@ -17,11 +17,11 @@ Follow `docs/ENGINEERING.md`. Summary for every change:
 
 ## Primary path style
 
-Thin routes → helpers → response models. Copy `app/routes/sql_items.py` + `app/db/items.py` + `app/web/`, not fat Mongo/in-memory handlers.
+Thin routes → helpers → response models. Copy `app/routes/books.py` + `app/db/books.py` + `app/web/books_routes.py`, not fat Mongo/in-memory handlers.
 
 ```python
 # ✅ GOOD — route delegates
-row = await items_repo.create_item(item.name, item.description)
+row = await books_repo.create_book(book.title, book.author)
 return _parse_response(row)
 
 # ❌ BAD — SQL / business logic stuffed in the route
@@ -32,7 +32,7 @@ await conn.execute("INSERT INTO ...")
 
 - `/api` → JSON (machines); `/auth` → HTML session; `/ui` → pages + HTMX partials (no `/htmx` prefix).
 - Browsers: session + CSRF. API: opaque Bearer tokens in SQLite (not JWT by default). `require_user` accepts session or Bearer; **session + mutating `/api` requires CSRF**; Bearer does not.
-- Do not rename the `items` domain until `ENGINEERING.md` says so.
+- Roles: viewer / editor / admin. Primary domain is **books** (`/api/books`, `/ui/books`). Demo routes stay `/items` and `/db-items`.
 
 ## When you change architecture
 

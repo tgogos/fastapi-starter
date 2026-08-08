@@ -1,4 +1,4 @@
-# Auth: sessions, CSRF, and Bearer tokens
+# Auth: sessions, CSRF, Bearer tokens, and roles
 
 How authentication works in this project, in plain language. For hard rules when changing code, see [`ENGINEERING.md`](ENGINEERING.md). For a short operator summary, see the README.
 
@@ -12,6 +12,18 @@ One user table in SQLite; two client mechanisms:
 | How it is sent | Browser attaches the cookie automatically | Client sets `Authorization: Bearer …` |
 | Where it lives | Browser cookie jar | String returned once from `/api/auth/token` |
 | CSRF on writes? | Yes | No |
+
+## Roles
+
+| Role | Books read | Books write | Admin users UI |
+|------|------------|-------------|----------------|
+| `viewer` | yes | no | no |
+| `editor` | yes | yes | no |
+| `admin` | yes | yes | yes |
+
+`GET /api/auth/me` returns `id`, `username`, and `role`. The demo seed user is `admin`.
+
+Server deps: `require_user` / `require_editor` / `require_admin` (JSON) and `*_html` variants (session UI). Templates may hide controls; routes still enforce.
 
 ## Browser login (session)
 
@@ -37,7 +49,7 @@ A page on another origin cannot read your HTML (same-origin policy), so it canno
 ### Where CSRF is enforced
 
 - Mutating `/auth` and `/ui` routes (HTML/HTMX).
-- Mutating `/api` routes when the client authenticates with the **session cookie** (`require_user`).
+- Mutating `/api` routes when the client authenticates with the **session cookie** (`require_user` / role deps that call it).
 - **Not** required when the client sends a valid **Bearer** token.
 
 ## Bearer tokens (API)
@@ -57,14 +69,19 @@ Either:
 
 ```js
 // Session + CSRF (page already logged in via /auth)
-fetch("/api/sql-items/", {
+fetch("/api/books/", {
   method: "POST",
   credentials: "include",
   headers: {
     "Content-Type": "application/json",
     "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content,
   },
-  body: JSON.stringify({ name: "Example", description: null }),
+  body: JSON.stringify({
+    title: "Example",
+    author: "Ada",
+    year: 2020,
+    notes: null,
+  }),
 });
 ```
 
@@ -79,19 +96,20 @@ Or use a Bearer token in `Authorization` (no CSRF header). Prefer Bearer for non
 | `Authorization: Bearer …` | Explicit API token |
 | `X-CSRF-Token` | CSRF secret for cookie-authenticated writes |
 | **401** | Not authenticated |
-| **403** | Forbidden (often bad/missing CSRF) |
+| **403** | Forbidden (bad/missing CSRF, or insufficient role) |
 | **303** | Redirect (e.g. anonymous UI → `/auth/login`) |
 
 ## How this maps to URLs
 
 ```
 /auth/login, /auth/logout     Browser session (HTML); CSRF on POST
-/ui/...                       HTMX UI; session + CSRF on mutations
+/ui/books                     HTMX books UI; session + CSRF on mutations
+/ui/admin/users               Admin-only staff page
 POST   /api/auth/token        Issue Bearer token
 DELETE /api/auth/token        Revoke current Bearer token
-GET    /api/auth/me           Current user (Bearer or session)
-/api/sql-items/...            JSON CRUD; writes: Bearer OR session+CSRF
+GET    /api/auth/me           Current user + role (Bearer or session)
+/api/books/...                JSON CRUD; reads: login; writes: editor+ (Bearer OR session+CSRF)
 /items, /db-items             Demos — no auth
 ```
 
-Relevant code: `app/auth/deps.py`, `app/auth/tokens.py`, `app/web/auth_routes.py`, `app/routes/api_auth.py`.
+Relevant code: `app/auth/deps.py`, `app/auth/tokens.py`, `app/auth/users.py`, `app/web/auth_routes.py`, `app/routes/api_auth.py`.
