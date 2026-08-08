@@ -1,23 +1,32 @@
 """JSON CRUD for SQLite-backed books (mounted at /api/books)."""
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.auth.deps import require_editor, require_user
 from app.db import books as books_repo
+from app.db.books import BOOK_CATEGORIES
 from app.models.book import BookCreate, BookResponse, BookUpdate, PaginatedBooks
 
 router = APIRouter()
 
 
 def _parse_response(row: dict) -> BookResponse:
-    return BookResponse(
-        id=row["id"],
-        title=row["title"],
-        author=row["author"],
-        year=row["year"],
-        notes=row["notes"],
-        created_at=row["created_at"],
-        updated_at=row["updated_at"],
+    return BookResponse.model_validate(row)
+
+
+def _parse_available(value: Optional[str]) -> Optional[bool]:
+    if value is None or value == "":
+        return None
+    lowered = value.strip().lower()
+    if lowered in {"1", "true", "yes", "available"}:
+        return True
+    if lowered in {"0", "false", "no", "unavailable"}:
+        return False
+    raise HTTPException(
+        status_code=422,
+        detail="available must be true/false (or omit)",
     )
 
 
@@ -29,10 +38,18 @@ def _parse_response(row: dict) -> BookResponse:
 )
 async def create_book(
     book: BookCreate,
-    _user: dict = Depends(require_editor),
+    user: dict = Depends(require_editor),
 ) -> BookResponse:
     row = await books_repo.create_book(
-        book.title, book.author, year=book.year, notes=book.notes
+        book.title,
+        book.author,
+        year=book.year,
+        notes=book.notes,
+        category=book.category,
+        isbn=book.isbn,
+        page_count=book.page_count,
+        available=book.available,
+        added_by_user_id=user["id"],
     )
     return _parse_response(row)
 
@@ -46,9 +63,28 @@ async def list_books(
     _user: dict = Depends(require_user),
     page: int = Query(1, ge=1),
     size: int = Query(10, ge=1, le=100),
-    q: str | None = Query(None, description="Search title or author"),
+    q: str | None = Query(None, description="Search title, author, or ISBN"),
+    category: str | None = Query(None, description="Book category"),
+    available: str | None = Query(
+        None, description="Filter by availability (true/false)"
+    ),
+    added_by_user_id: int | None = Query(None, description="Filter by adder user id"),
+    year_min: int | None = Query(None, ge=0, le=9999),
+    year_max: int | None = Query(None, ge=0, le=9999),
 ) -> PaginatedBooks:
-    rows, total = await books_repo.list_books(page=page, size=size, q=q)
+    if category is not None and category not in BOOK_CATEGORIES:
+        raise HTTPException(status_code=422, detail="Invalid category")
+    avail = _parse_available(available)
+    rows, total = await books_repo.list_books(
+        page=page,
+        size=size,
+        q=q,
+        category=category,
+        available=avail,
+        added_by_user_id=added_by_user_id,
+        year_min=year_min,
+        year_max=year_max,
+    )
     return PaginatedBooks(
         items=[_parse_response(r) for r in rows],
         total_count=total,
@@ -95,6 +131,12 @@ async def update_book(
         year_set="year" in data,
         notes=data.get("notes"),
         notes_set="notes" in data,
+        category=data.get("category"),
+        isbn=data.get("isbn"),
+        isbn_set="isbn" in data,
+        page_count=data.get("page_count"),
+        page_count_set="page_count" in data,
+        available=data.get("available"),
     )
     if row is None:
         raise HTTPException(status_code=404, detail=f"Book {book_id} not found")

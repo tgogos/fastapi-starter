@@ -32,11 +32,12 @@ make upd      # build + start (detached)
 
 Demo user (seeded when `users` is empty) is an **admin**: `DEMO_USERNAME` / `DEMO_PASSWORD` (defaults `admin` / `admin123`). Change these and **`SECRET_KEY`** before any shared deploy.
 
-Optional sample data (viewer + editor users, a handful of books) — idempotent, safe to re-run:
+Optional sample data (viewer + editor users, many books with categories/ISBN/availability) — idempotent, safe to re-run:
 
 ```bash
 make seed
 # viewer / demo123   editor / demo123
+# Advanced filters: /ui/books/search
 ```
 
 After pulling schema changes, delete local SQLite files under `data/` (and restart) if the app fails on missing columns/tables — this starter recreates schema rather than migrating.

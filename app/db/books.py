@@ -1,4 +1,8 @@
-"""SQL helpers for the books table."""
+"""SQL helpers for the books table.
+
+List/get use a LEFT JOIN to users so added_by_username is loaded in one query
+(avoid N+1: do not call get_user_by_id per book row).
+"""
 
 from __future__ import annotations
 
@@ -9,38 +13,157 @@ from uuid import uuid4
 
 from app.db.connection import get_connection
 
+BOOK_CATEGORIES = frozenset(
+    {
+        "fiction",
+        "nonfiction",
+        "scifi",
+        "fantasy",
+        "mystery",
+        "biography",
+        "other",
+    }
+)
+
+_BOOK_SELECT = """
+    SELECT
+        b.id,
+        b.title,
+        b.author,
+        b.year,
+        b.notes,
+        b.category,
+        b.isbn,
+        b.page_count,
+        b.available,
+        b.added_by_user_id,
+        u.username AS added_by_username,
+        b.created_at,
+        b.updated_at
+    FROM books b
+    LEFT JOIN users u ON u.id = b.added_by_user_id
+"""
+
 
 def _utcnow() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
+def normalize_category(category: Optional[str]) -> str:
+    if category and category in BOOK_CATEGORIES:
+        return category
+    return "other"
+
+
 def _row_to_dict(row) -> dict[str, Any]:
+    keys = row.keys()
+    available = row["available"]
     return {
         "id": row["id"],
         "title": row["title"],
         "author": row["author"],
         "year": row["year"],
         "notes": row["notes"],
+        "category": normalize_category(row["category"] if "category" in keys else None),
+        "isbn": row["isbn"] if "isbn" in keys else None,
+        "page_count": row["page_count"] if "page_count" in keys else None,
+        "available": bool(available) if available is not None else True,
+        "added_by_user_id": (
+            row["added_by_user_id"] if "added_by_user_id" in keys else None
+        ),
+        "added_by_username": (
+            row["added_by_username"] if "added_by_username" in keys else None
+        ),
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
 
 
+def _build_filters(
+    *,
+    q: Optional[str] = None,
+    category: Optional[str] = None,
+    available: Optional[bool] = None,
+    added_by_user_id: Optional[int] = None,
+    year_min: Optional[int] = None,
+    year_max: Optional[int] = None,
+) -> tuple[str, list[Any]]:
+    clauses: list[str] = []
+    params: list[Any] = []
+
+    q = (q or "").strip() or None
+    if q:
+        like = f"%{q}%"
+        clauses.append(
+            "("
+            "b.title LIKE ? COLLATE NOCASE OR "
+            "b.author LIKE ? COLLATE NOCASE OR "
+            "IFNULL(b.isbn, '') LIKE ? COLLATE NOCASE"
+            ")"
+        )
+        params.extend([like, like, like])
+
+    if category and category in BOOK_CATEGORIES:
+        clauses.append("b.category = ?")
+        params.append(category)
+
+    if available is not None:
+        clauses.append("b.available = ?")
+        params.append(1 if available else 0)
+
+    if added_by_user_id is not None:
+        clauses.append("b.added_by_user_id = ?")
+        params.append(added_by_user_id)
+
+    if year_min is not None:
+        clauses.append("b.year IS NOT NULL AND b.year >= ?")
+        params.append(year_min)
+
+    if year_max is not None:
+        clauses.append("b.year IS NOT NULL AND b.year <= ?")
+        params.append(year_max)
+
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    return where, params
+
+
 async def create_book(
     title: str,
     author: str,
+    *,
     year: Optional[int] = None,
     notes: Optional[str] = None,
+    category: str = "other",
+    isbn: Optional[str] = None,
+    page_count: Optional[int] = None,
+    available: bool = True,
+    added_by_user_id: Optional[int] = None,
 ) -> dict[str, Any]:
     conn = get_connection()
     book_id = str(uuid4())
     now = _utcnow()
     await conn.execute(
         """
-        INSERT INTO books (id, title, author, year, notes, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO books (
+            id, title, author, year, notes, category, isbn, page_count,
+            available, added_by_user_id, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (book_id, title, author, year, notes, now, now),
+        (
+            book_id,
+            title,
+            author,
+            year,
+            notes,
+            normalize_category(category),
+            isbn,
+            page_count,
+            1 if available else 0,
+            added_by_user_id,
+            now,
+            now,
+        ),
     )
     await conn.commit()
     return await get_book(book_id)  # type: ignore[return-value]
@@ -49,10 +172,7 @@ async def create_book(
 async def get_book(book_id: str) -> Optional[dict[str, Any]]:
     conn = get_connection()
     async with conn.execute(
-        """
-        SELECT id, title, author, year, notes, created_at, updated_at
-        FROM books WHERE id = ?
-        """,
+        _BOOK_SELECT + " WHERE b.id = ?",
         (book_id,),
     ) as cursor:
         row = await cursor.fetchone()
@@ -62,51 +182,42 @@ async def get_book(book_id: str) -> Optional[dict[str, Any]]:
 async def list_books(
     page: int = 1,
     size: int = 10,
+    *,
     q: Optional[str] = None,
+    category: Optional[str] = None,
+    available: Optional[bool] = None,
+    added_by_user_id: Optional[int] = None,
+    year_min: Optional[int] = None,
+    year_max: Optional[int] = None,
 ) -> tuple[list[dict[str, Any]], int]:
+    """List books with filters. Username comes from JOIN (not per-row lookups)."""
     conn = get_connection()
-    q = (q or "").strip() or None
+    where, params = _build_filters(
+        q=q,
+        category=category,
+        available=available,
+        added_by_user_id=added_by_user_id,
+        year_min=year_min,
+        year_max=year_max,
+    )
 
-    if q:
-        like = f"%{q}%"
-        async with conn.execute(
-            """
-            SELECT COUNT(*) AS c FROM books
-            WHERE title LIKE ? COLLATE NOCASE
-               OR author LIKE ? COLLATE NOCASE
-            """,
-            (like, like),
-        ) as cursor:
-            total = int((await cursor.fetchone())["c"])
+    async with conn.execute(
+        f"SELECT COUNT(*) AS c FROM books b {where}",
+        params,
+    ) as cursor:
+        total = int((await cursor.fetchone())["c"])
 
-        offset = (page - 1) * size
-        async with conn.execute(
-            """
-            SELECT id, title, author, year, notes, created_at, updated_at
-            FROM books
-            WHERE title LIKE ? COLLATE NOCASE
-               OR author LIKE ? COLLATE NOCASE
-            ORDER BY created_at DESC
-            LIMIT ? OFFSET ?
-            """,
-            (like, like, size, offset),
-        ) as cursor:
-            rows = await cursor.fetchall()
-    else:
-        async with conn.execute("SELECT COUNT(*) AS c FROM books") as cursor:
-            total = int((await cursor.fetchone())["c"])
-
-        offset = (page - 1) * size
-        async with conn.execute(
-            """
-            SELECT id, title, author, year, notes, created_at, updated_at
-            FROM books
-            ORDER BY created_at DESC
-            LIMIT ? OFFSET ?
-            """,
-            (size, offset),
-        ) as cursor:
-            rows = await cursor.fetchall()
+    offset = (page - 1) * size
+    async with conn.execute(
+        f"""
+        {_BOOK_SELECT}
+        {where}
+        ORDER BY b.created_at DESC
+        LIMIT ? OFFSET ?
+        """,
+        [*params, size, offset],
+    ) as cursor:
+        rows = await cursor.fetchall()
 
     return [_row_to_dict(r) for r in rows], total
 
@@ -124,6 +235,12 @@ async def update_book(
     year_set: bool = False,
     notes: Optional[str] = None,
     notes_set: bool = False,
+    category: Optional[str] = None,
+    isbn: Optional[str] = None,
+    isbn_set: bool = False,
+    page_count: Optional[int] = None,
+    page_count_set: bool = False,
+    available: Optional[bool] = None,
 ) -> Optional[dict[str, Any]]:
     existing = await get_book(book_id)
     if existing is None:
@@ -139,16 +256,43 @@ async def update_book(
         new_notes = notes
     else:
         new_notes = existing["notes"] if notes is None else notes
+    new_category = (
+        normalize_category(category) if category is not None else existing["category"]
+    )
+    if isbn_set:
+        new_isbn = isbn
+    else:
+        new_isbn = existing["isbn"] if isbn is None else isbn
+    if page_count_set:
+        new_pages = page_count
+    else:
+        new_pages = existing["page_count"] if page_count is None else page_count
+    if available is None:
+        new_available = existing["available"]
+    else:
+        new_available = available
 
     now = _utcnow()
     conn = get_connection()
     await conn.execute(
         """
         UPDATE books
-        SET title = ?, author = ?, year = ?, notes = ?, updated_at = ?
+        SET title = ?, author = ?, year = ?, notes = ?, category = ?,
+            isbn = ?, page_count = ?, available = ?, updated_at = ?
         WHERE id = ?
         """,
-        (new_title, new_author, new_year, new_notes, now, book_id),
+        (
+            new_title,
+            new_author,
+            new_year,
+            new_notes,
+            new_category,
+            new_isbn,
+            new_pages,
+            1 if new_available else 0,
+            now,
+            book_id,
+        ),
     )
     await conn.commit()
     return await get_book(book_id)

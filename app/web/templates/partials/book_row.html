@@ -1,8 +1,14 @@
 <tr id="book-row-{{ book.id }}">
-  <td>{{ book.title }}</td>
+  <td>
+    {{ book.title }}
+    {% if book.isbn %}<br><small>{{ book.isbn }}</small>{% endif %}
+  </td>
   <td>{{ book.author }}</td>
+  <td>{{ book.category }}</td>
   <td>{{ book.year if book.year is not none else "—" }}</td>
-  <td>{{ book.notes or "—" }}</td>
+  <td>{{ book.page_count if book.page_count is not none else "—" }}</td>
+  <td>{% if book.available %}yes{% else %}no{% endif %}</td>
+  <td>{{ book.added_by_username or "—" }}</td>
   {% if can_edit %}
   <td>
     <div class="actions">

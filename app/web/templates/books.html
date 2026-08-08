@@ -2,7 +2,10 @@
 {% block title %}Books · FastAPI Starter{% endblock %}
 {% block content %}
 <h1>Books</h1>
-<p>HTMX UI backed by SQLite. Search and pagination update the list without a full page reload.</p>
+<p>
+  HTMX UI backed by SQLite.
+  <a href="/ui/books/search">Advanced search</a> for filters.
+</p>
 
 {% if can_edit %}
 <article>
@@ -26,20 +29,41 @@
     </div>
     <div class="grid">
       <label>
+        Category
+        <select name="category">
+          {% for c in categories %}
+          <option value="{{ c }}" {% if c == 'fiction' %}selected{% endif %}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
         Year
         <input type="number" name="year" min="0" max="9999">
+      </label>
+      <label>
+        Pages
+        <input type="number" name="page_count" min="1" max="100000">
+      </label>
+    </div>
+    <div class="grid">
+      <label>
+        ISBN
+        <input type="text" name="isbn" maxlength="32">
       </label>
       <label>
         Notes
         <input type="text" name="notes" maxlength="2000">
       </label>
     </div>
+    <label>
+      <input type="checkbox" name="available" value="1" checked>
+      Available
+    </label>
     <button type="submit">Create</button>
   </form>
 </article>
 {% endif %}
 
-{# Search stays outside #books-panel so HTMX swaps do not replace the input (keeps focus). #}
 <div class="search-toolbar">
   <form
     class="search-form"
@@ -60,7 +84,7 @@
         type="search"
         name="q"
         value="{{ q }}"
-        placeholder="Title or author"
+        placeholder="Title, author, or ISBN"
         aria-label="Search books"
         autocomplete="off"
       >
@@ -68,7 +92,6 @@
     <noscript><button type="submit">Search</button></noscript>
   </form>
 
-  {# CSS-only spinner; HTMX toggles .htmx-request on this node via hx-indicator. #}
   <div
     id="books-indicator"
     class="htmx-indicator"

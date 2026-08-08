@@ -75,16 +75,22 @@ Primary mounts:
 | Surface | Path |
 |---------|------|
 | UI list / HTMX | `/ui/books` (full page or partial via `HX-Request`) |
+| Advanced search | `/ui/books/search` (filters outside swap target) |
 | Staff | `/ui/admin/users` (admin only) |
-| JSON API | `/api/books` (reads: login; writes: editor+) |
+| JSON API | `/api/books` (reads: login; writes: editor+; filter query params) |
 | Root | `/` → `/ui/books` |
 
 Demos remain at `/items` and `/db-items`.
 
+### Books fields and N+1
+
+Books include scalars (`category`, `isbn`, `page_count`, `available`) and `added_by_user_id` → `users`. List/get **LEFT JOIN** users so `added_by_username` is loaded in the same query — do not resolve the adder with a per-row `get_user_by_id` (classic N+1).
+
 ### HTMX patterns in use
 
 - **`HX-Request` dual response** — one list route returns the full page or `partials/books_table.html`.
-- **Search** — `q` on title/author with debounce + `hx-push-url`. Keep the search form **outside** the HTMX swap target so the input is not replaced (focus stays while typing).
+- **Search** — `q` on title/author/ISBN with debounce + `hx-push-url`. Keep the search/filter form **outside** the HTMX swap target so inputs are not replaced (focus stays while typing).
+- **Advanced filters** — `/ui/books/search` uses selects/number inputs (`change` + debounced text) targeting the results panel only.
 - **Pagination** — `page` / `size` query params, same dual-response + push URL; swaps only the results panel.
 - **Indicator** — shared `#books-indicator` via `hx-indicator` (search, pagination, create). CSS-only spinner; HTMX toggles `.htmx-request` / opacity. Keep the indicator outside the swap target.
 - Progressive enhancement: pagination links keep usable `href`s.
@@ -109,7 +115,7 @@ Implemented: session + CSRF for the UI and for session-authenticated `/api` writ
 
 ## Schema / local SQLite
 
-`CREATE TABLE IF NOT EXISTS` does not migrate existing databases. After schema changes (e.g. `users.role`, `books` replacing `sql_items`), delete local `data/*.db` (and test DBs) and restart so tables are recreated. The starter prefers recreate over Alembic.
+`CREATE TABLE IF NOT EXISTS` does not migrate existing databases. Startup runs a small additive migrate for new `books` columns when missing; for larger shape changes, delete local `data/*.db` (and test DBs) and restart. The starter prefers recreate / tiny ALTER helpers over Alembic.
 
 ## Non-negotiables
 

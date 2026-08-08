@@ -2,14 +2,17 @@
 <p class="flash flash-error" role="alert">{{ form_error }} <button type="button" class="flash-dismiss" aria-label="Dismiss">×</button></p>
 {% endif %}
 
-<figure>
+<figure class="books-figure">
   <table>
     <thead>
       <tr>
         <th scope="col">Title</th>
         <th scope="col">Author</th>
+        <th scope="col">Category</th>
         <th scope="col">Year</th>
-        <th scope="col">Notes</th>
+        <th scope="col">Pages</th>
+        <th scope="col">Avail.</th>
+        <th scope="col">Added by</th>
         {% if can_edit %}
         <th scope="col">Actions</th>
         {% endif %}
@@ -22,7 +25,7 @@
         {% endfor %}
       {% else %}
         <tr class="empty-row">
-          <td colspan="{% if can_edit %}5{% else %}4{% endif %}"><em>No books found.</em></td>
+          <td colspan="{% if can_edit %}8{% else %}7{% endif %}"><em>No books found.</em></td>
         </tr>
       {% endif %}
     </tbody>

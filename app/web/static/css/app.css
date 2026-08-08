@@ -153,3 +153,16 @@
   background: var(--pico-ins-color);
   color: var(--pico-background-color);
 }
+
+.filters-form {
+  margin-bottom: 1rem;
+}
+
+.filters-form .actions {
+  margin-top: 0.75rem;
+  align-items: center;
+}
+
+.books-figure {
+  overflow-x: auto;
+}

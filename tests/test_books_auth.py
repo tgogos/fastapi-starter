@@ -45,10 +45,13 @@ class TestBooksApi:
         book = create.json()
         book_id = book["id"]
         assert book["title"] == sample_book_data["title"]
+        assert book["category"] == "biography"
+        assert book["added_by_username"] == os.environ["DEMO_USERNAME"]
 
         get_one = auth_client.get(f"{API_BOOKS}/{book_id}")
         assert get_one.status_code == 200
         assert get_one.json()["id"] == book_id
+        assert get_one.json()["added_by_username"] == os.environ["DEMO_USERNAME"]
 
         update = auth_client.put(
             f"{API_BOOKS}/{book_id}",
@@ -70,6 +73,42 @@ class TestBooksApi:
 
         missing = auth_client.get(f"{API_BOOKS}/{book_id}")
         assert missing.status_code == 404
+
+    def test_list_filters_and_join_username(
+        self, auth_client: TestClient, sample_book_data: dict
+    ):
+        headers = session_csrf_headers(auth_client)
+        other = {
+            **sample_book_data,
+            "title": "Other Book",
+            "category": "mystery",
+            "available": False,
+            "isbn": "978-9999999999",
+        }
+        assert (
+            auth_client.post(
+                f"{API_BOOKS}/", json=sample_book_data, headers=headers
+            ).status_code
+            == 201
+        )
+        assert (
+            auth_client.post(f"{API_BOOKS}/", json=other, headers=headers).status_code
+            == 201
+        )
+
+        by_cat = auth_client.get(f"{API_BOOKS}/", params={"category": "mystery"})
+        assert by_cat.status_code == 200
+        assert by_cat.json()["total_count"] == 1
+        assert by_cat.json()["items"][0]["title"] == "Other Book"
+        assert by_cat.json()["items"][0]["added_by_username"]
+
+        by_avail = auth_client.get(f"{API_BOOKS}/", params={"available": "false"})
+        assert by_avail.status_code == 200
+        assert by_avail.json()["total_count"] == 1
+
+        by_isbn = auth_client.get(f"{API_BOOKS}/", params={"q": "978-9999999999"})
+        assert by_isbn.status_code == 200
+        assert by_isbn.json()["total_count"] == 1
 
 
 class TestRoles:
@@ -181,6 +220,8 @@ class TestAuthWeb:
                 "author": "Author X",
                 "year": 2001,
                 "notes": None,
+                "category": "fiction",
+                "available": True,
             },
             headers=headers,
         )
@@ -206,6 +247,33 @@ class TestAuthWeb:
             params={"page": 1, "size": 1},
         )
         assert page.status_code == 200
+
+    def test_advanced_search_page(self, auth_client: TestClient):
+        headers = session_csrf_headers(auth_client)
+        auth_client.post(
+            f"{API_BOOKS}/",
+            json={
+                "title": "Filter Me",
+                "author": "Y",
+                "category": "fantasy",
+                "available": True,
+                "year": 1999,
+            },
+            headers=headers,
+        )
+        page = auth_client.get("/ui/books/search")
+        assert page.status_code == 200
+        assert "Advanced search" in page.text
+        assert 'name="category"' in page.text
+
+        filtered = auth_client.get(
+            "/ui/books/search",
+            params={"category": "fantasy", "available": "true"},
+            headers={"HX-Request": "true"},
+        )
+        assert filtered.status_code == 200
+        assert "Filter Me" in filtered.text
+        assert "<html" not in filtered.text.lower()
 
     def test_login_logout(self, client: TestClient):
         page = client.get("/auth/login")

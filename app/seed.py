@@ -15,7 +15,9 @@ import asyncio
 from app.auth.passwords import hash_password
 from app.auth.seed import seed_demo_user
 from app.auth.users import create_user, get_user_by_username
+from app.core import config
 from app.db import books as books_repo
+from app.db.books import BOOK_CATEGORIES
 from app.db.connection import close_sqlite, connect_to_sqlite, get_connection
 
 # Shared password for sample non-admin accounts (documented in README).
@@ -209,30 +211,95 @@ async def seed_sample_users() -> list[str]:
     return created
 
 
-async def _existing_book_titles() -> set[str]:
+_CATEGORY_CYCLE = sorted(BOOK_CATEGORIES)
+
+
+def _sample_meta(index: int, book: dict[str, object]) -> dict[str, object]:
+    """Fill category / ISBN / pages / availability for demo variety."""
+    return {
+        **book,
+        "category": _CATEGORY_CYCLE[index % len(_CATEGORY_CYCLE)],
+        "isbn": f"978-{1000000000 + index:010d}",
+        "page_count": 180 + (index * 37) % 700,
+        "available": index % 5 != 0,
+    }
+
+
+async def _book_id_by_title(title: str) -> str | None:
     conn = get_connection()
-    async with conn.execute("SELECT title FROM books") as cursor:
-        rows = await cursor.fetchall()
-    return {row["title"] for row in rows}
+    async with conn.execute(
+        "SELECT id, isbn FROM books WHERE title = ? LIMIT 1",
+        (title,),
+    ) as cursor:
+        row = await cursor.fetchone()
+    if row is None:
+        return None
+    return row["id"]
 
 
-async def seed_sample_books() -> int:
-    """Insert sample books whose titles are not already present. Returns count inserted."""
-    existing = await _existing_book_titles()
-    added = 0
-    for book in SAMPLE_BOOKS:
+async def _book_needs_enrichment(book_id: str) -> bool:
+    conn = get_connection()
+    async with conn.execute(
+        "SELECT isbn, added_by_user_id FROM books WHERE id = ?",
+        (book_id,),
+    ) as cursor:
+        row = await cursor.fetchone()
+    if row is None:
+        return False
+    return row["isbn"] is None or row["added_by_user_id"] is None
+
+
+async def seed_sample_books() -> tuple[int, int]:
+    """Insert or enrich sample books. Returns (created, enriched)."""
+    admin = await get_user_by_username(config.DEMO_USERNAME)
+    editor = await get_user_by_username("editor")
+    adder_ids = [u["id"] for u in (admin, editor) if u is not None]
+
+    created = 0
+    enriched = 0
+    for index, raw in enumerate(SAMPLE_BOOKS):
+        book = _sample_meta(index, raw)
         title = str(book["title"])
-        if title in existing:
+        adder = adder_ids[index % len(adder_ids)] if adder_ids else None
+        book_id = await _book_id_by_title(title)
+
+        if book_id is None:
+            await books_repo.create_book(
+                title=title,
+                author=str(book["author"]),
+                year=book["year"] if book["year"] is not None else None,  # type: ignore[arg-type]
+                notes=str(book["notes"]) if book.get("notes") else None,
+                category=str(book["category"]),
+                isbn=str(book["isbn"]),
+                page_count=int(book["page_count"]),  # type: ignore[arg-type]
+                available=bool(book["available"]),
+                added_by_user_id=adder,
+            )
+            created += 1
             continue
-        await books_repo.create_book(
-            title=title,
-            author=str(book["author"]),
-            year=book["year"] if book["year"] is not None else None,  # type: ignore[arg-type]
-            notes=str(book["notes"]) if book.get("notes") else None,
-        )
-        existing.add(title)
-        added += 1
-    return added
+
+        if await _book_needs_enrichment(book_id):
+            conn = get_connection()
+            await conn.execute(
+                """
+                UPDATE books
+                SET category = ?, isbn = ?, page_count = ?, available = ?,
+                    added_by_user_id = COALESCE(added_by_user_id, ?)
+                WHERE id = ?
+                """,
+                (
+                    str(book["category"]),
+                    str(book["isbn"]),
+                    int(book["page_count"]),  # type: ignore[arg-type]
+                    1 if book["available"] else 0,
+                    adder,
+                    book_id,
+                ),
+            )
+            await conn.commit()
+            enriched += 1
+
+    return created, enriched
 
 
 async def run_seed() -> None:
@@ -241,7 +308,7 @@ async def run_seed() -> None:
     try:
         await seed_demo_user()
         created_users = await seed_sample_users()
-        books_added = await seed_sample_books()
+        books_created, books_enriched = await seed_sample_books()
 
         if created_users:
             print(
@@ -251,13 +318,13 @@ async def run_seed() -> None:
         else:
             print("ℹ️  Sample users already present (viewer, editor)")
 
-        if books_added:
+        if books_created or books_enriched:
             print(
-                f"✅ Seeded {books_added} books "
-                f"({len(SAMPLE_BOOKS)} samples defined; UI page size is 10)"
+                f"✅ Books seed: {books_created} created, {books_enriched} enriched "
+                f"({len(SAMPLE_BOOKS)} samples; UI page size is 10)"
             )
         else:
-            print("ℹ️  All sample book titles already present")
+            print("ℹ️  All sample books already present with metadata")
     finally:
         await close_sqlite()
 

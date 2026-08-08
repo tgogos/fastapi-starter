@@ -28,9 +28,52 @@ async def connect_to_sqlite() -> aiosqlite.Connection:
     schema_sql = SCHEMA_PATH.read_text(encoding="utf-8")
     await _connection.executescript(schema_sql)
     await _connection.commit()
+    await _migrate_books_columns(_connection)
 
     print(f"✅ Connected to SQLite at {db_path}")
     return _connection
+
+
+async def _migrate_books_columns(conn: aiosqlite.Connection) -> None:
+    """Add books columns introduced after the first schema (CREATE IF NOT EXISTS is a no-op)."""
+    async with conn.execute("PRAGMA table_info(books)") as cursor:
+        cols = {row["name"] for row in await cursor.fetchall()}
+    if not cols:
+        return
+
+    alters: list[str] = []
+    if "category" not in cols:
+        alters.append(
+            "ALTER TABLE books ADD COLUMN category TEXT NOT NULL DEFAULT 'other'"
+        )
+    if "isbn" not in cols:
+        alters.append("ALTER TABLE books ADD COLUMN isbn TEXT")
+    if "page_count" not in cols:
+        alters.append("ALTER TABLE books ADD COLUMN page_count INTEGER")
+    if "available" not in cols:
+        alters.append(
+            "ALTER TABLE books ADD COLUMN available INTEGER NOT NULL DEFAULT 1"
+        )
+    if "added_by_user_id" not in cols:
+        alters.append("ALTER TABLE books ADD COLUMN added_by_user_id INTEGER")
+
+    for sql in alters:
+        await conn.execute(sql)
+    if alters:
+        await conn.commit()
+        print(f"✅ Migrated books table (+{len(alters)} columns)")
+
+    # Safe after columns exist (new DB via schema.sql, or ALTER above).
+    await conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_books_category ON books(category)"
+    )
+    await conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_books_available ON books(available)"
+    )
+    await conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_books_added_by ON books(added_by_user_id)"
+    )
+    await conn.commit()
 
 
 async def close_sqlite() -> None:

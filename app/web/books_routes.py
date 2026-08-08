@@ -24,12 +24,14 @@ from app.auth.users import (
     set_user_role,
 )
 from app.db import books as books_repo
+from app.db.books import BOOK_CATEGORIES, normalize_category
 from app.web.paths import TEMPLATES_DIR
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 DEFAULT_PAGE_SIZE = 10
+CATEGORY_OPTIONS = sorted(BOOK_CATEGORIES)
 
 
 def _can_edit(user: dict) -> bool:
@@ -43,23 +45,82 @@ def _ctx(request: Request, user: dict, **extra):
         "csrf_token": get_or_create_csrf_token(request),
         "can_edit": _can_edit(user),
         "is_admin": role_at_least(user["role"], "admin"),
+        "categories": CATEGORY_OPTIONS,
         **extra,
     }
 
 
-def _books_list_url(page: int, size: int, q: str | None) -> str:
+def _parse_optional_int(raw: str | None) -> int | None:
+    if raw is None:
+        return None
+    raw = raw.strip()
+    if not raw:
+        return None
+    return int(raw)
+
+
+def _parse_available_form(raw: str | None) -> bool | None:
+    if raw is None or raw == "" or raw == "any":
+        return None
+    if raw in {"1", "true", "yes"}:
+        return True
+    if raw in {"0", "false", "no"}:
+        return False
+    return None
+
+
+def _books_list_url(
+    base: str,
+    *,
+    page: int,
+    size: int,
+    q: str | None = None,
+    category: str | None = None,
+    available: str | None = None,
+    added_by_user_id: int | None = None,
+    year_min: int | None = None,
+    year_max: int | None = None,
+) -> str:
     params: dict[str, str | int] = {"page": page, "size": size}
     if q:
         params["q"] = q
-    return f"/ui/books?{urlencode(params)}"
+    if category:
+        params["category"] = category
+    if available and available != "any":
+        params["available"] = available
+    if added_by_user_id is not None:
+        params["added_by_user_id"] = added_by_user_id
+    if year_min is not None:
+        params["year_min"] = year_min
+    if year_max is not None:
+        params["year_max"] = year_max
+    return f"{base}?{urlencode(params)}"
 
 
 async def _books_page_data(
+    *,
+    base_path: str,
     page: int,
     size: int,
-    q: str | None,
+    q: str | None = None,
+    category: str | None = None,
+    available: str | None = None,
+    added_by_user_id: int | None = None,
+    year_min: int | None = None,
+    year_max: int | None = None,
 ) -> dict:
-    rows, total = await books_repo.list_books(page=page, size=size, q=q)
+    avail = _parse_available_form(available)
+    cat = category if category in BOOK_CATEGORIES else None
+    rows, total = await books_repo.list_books(
+        page=page,
+        size=size,
+        q=q,
+        category=cat,
+        available=avail,
+        added_by_user_id=added_by_user_id,
+        year_min=year_min,
+        year_max=year_max,
+    )
     pages = books_repo.total_pages(total, size)
     return {
         "books": rows,
@@ -68,11 +129,92 @@ async def _books_page_data(
         "size": size,
         "total_pages": pages,
         "q": q or "",
-        "prev_url": _books_list_url(page - 1, size, q) if page > 1 else None,
+        "category": cat or "",
+        "available": available or "any",
+        "added_by_user_id": added_by_user_id,
+        "year_min": year_min if year_min is not None else "",
+        "year_max": year_max if year_max is not None else "",
+        "list_base": base_path,
+        "prev_url": (
+            _books_list_url(
+                base_path,
+                page=page - 1,
+                size=size,
+                q=q,
+                category=cat,
+                available=available,
+                added_by_user_id=added_by_user_id,
+                year_min=year_min,
+                year_max=year_max,
+            )
+            if page > 1
+            else None
+        ),
         "next_url": (
-            _books_list_url(page + 1, size, q) if pages and page < pages else None
+            _books_list_url(
+                base_path,
+                page=page + 1,
+                size=size,
+                q=q,
+                category=cat,
+                available=available,
+                added_by_user_id=added_by_user_id,
+                year_min=year_min,
+                year_max=year_max,
+            )
+            if pages and page < pages
+            else None
         ),
     }
+
+
+def _parse_book_form(
+    *,
+    title: str,
+    author: str,
+    year: str,
+    notes: str,
+    category: str,
+    isbn: str,
+    page_count: str,
+    available: str | None,
+) -> tuple[dict | None, str | None]:
+    title = title.strip()
+    author = author.strip()
+    notes_val = notes.strip() or None
+    isbn_val = isbn.strip() or None
+    category_val = normalize_category(category.strip() if category else None)
+    year_val: int | None = None
+    pages_val: int | None = None
+    available_val = available in {"1", "true", "on", "yes"}
+
+    if not title or not author:
+        return None, "Title and author are required."
+    if year.strip():
+        try:
+            year_val = int(year.strip())
+            if year_val < 0 or year_val > 9999:
+                return None, "Year must be between 0 and 9999."
+        except ValueError:
+            return None, "Year must be a number."
+    if page_count.strip():
+        try:
+            pages_val = int(page_count.strip())
+            if pages_val < 1:
+                return None, "Page count must be at least 1."
+        except ValueError:
+            return None, "Page count must be a number."
+
+    return {
+        "title": title,
+        "author": author,
+        "year": year_val,
+        "notes": notes_val,
+        "category": category_val,
+        "isbn": isbn_val,
+        "page_count": pages_val,
+        "available": available_val,
+    }, None
 
 
 @router.get("/books", response_class=HTMLResponse)
@@ -83,13 +225,57 @@ async def books_page(
     size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=100),
     q: str | None = Query(None),
 ):
-    data = await _books_page_data(page, size, q)
+    data = await _books_page_data(base_path="/ui/books", page=page, size=size, q=q)
     template = (
         "partials/books_table.html"
         if request.headers.get("HX-Request") == "true"
         else "books.html"
     )
     return templates.TemplateResponse(request, template, _ctx(request, user, **data))
+
+
+@router.get("/books/search", response_class=HTMLResponse)
+async def books_search_page(
+    request: Request,
+    user: dict = Depends(require_user_html),
+    page: int = Query(1, ge=1),
+    size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=100),
+    q: str | None = Query(None),
+    category: str | None = Query(None),
+    available: str | None = Query(None),
+    added_by_user_id: str | None = Query(None),
+    year_min: str | None = Query(None),
+    year_max: str | None = Query(None),
+):
+    try:
+        ymin = _parse_optional_int(year_min)
+        ymax = _parse_optional_int(year_max)
+        added_by = _parse_optional_int(added_by_user_id)
+    except ValueError:
+        return HTMLResponse("Invalid filter value", status_code=400)
+
+    data = await _books_page_data(
+        base_path="/ui/books/search",
+        page=page,
+        size=size,
+        q=q,
+        category=category,
+        available=available,
+        added_by_user_id=added_by,
+        year_min=ymin,
+        year_max=ymax,
+    )
+    users = await list_users()
+    template = (
+        "partials/books_table.html"
+        if request.headers.get("HX-Request") == "true"
+        else "books_search.html"
+    )
+    return templates.TemplateResponse(
+        request,
+        template,
+        _ctx(request, user, filter_users=users, **data),
+    )
 
 
 @router.post(
@@ -104,31 +290,40 @@ async def create_book(
     author: str = Form(...),
     year: str = Form(""),
     notes: str = Form(""),
+    category: str = Form("other"),
+    isbn: str = Form(""),
+    page_count: str = Form(""),
+    available: str | None = Form(None),
     page: int = Query(1, ge=1),
     size: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=100),
     q: str | None = Query(None),
 ):
-    title = title.strip()
-    author = author.strip()
-    notes_val = notes.strip() or None
-    year_val: int | None = None
-    form_error = None
-
-    if not title or not author:
-        form_error = "Title and author are required."
-    elif year.strip():
-        try:
-            year_val = int(year.strip())
-            if year_val < 0 or year_val > 9999:
-                form_error = "Year must be between 0 and 9999."
-        except ValueError:
-            form_error = "Year must be a number."
-
-    if form_error is None:
-        await books_repo.create_book(title, author, year=year_val, notes=notes_val)
+    # Unchecked checkbox omits the field → treat as unavailable.
+    payload, form_error = _parse_book_form(
+        title=title,
+        author=author,
+        year=year,
+        notes=notes,
+        category=category,
+        isbn=isbn,
+        page_count=page_count,
+        available=available if available is not None else "0",
+    )
+    if form_error is None and payload is not None:
+        await books_repo.create_book(
+            payload["title"],
+            payload["author"],
+            year=payload["year"],
+            notes=payload["notes"],
+            category=payload["category"],
+            isbn=payload["isbn"],
+            page_count=payload["page_count"],
+            available=payload["available"],
+            added_by_user_id=user["id"],
+        )
         page = 1
 
-    data = await _books_page_data(page, size, q)
+    data = await _books_page_data(base_path="/ui/books", page=page, size=size, q=q)
     return templates.TemplateResponse(
         request,
         "partials/books_table.html",
@@ -156,6 +351,7 @@ async def edit_book_form(
             page=1,
             size=DEFAULT_PAGE_SIZE,
             q="",
+            list_base="/ui/books",
         ),
     )
 
@@ -179,6 +375,7 @@ async def book_row(
             page=1,
             size=DEFAULT_PAGE_SIZE,
             q="",
+            list_base="/ui/books",
         ),
     )
 
@@ -196,27 +393,38 @@ async def update_book(
     author: str = Form(...),
     year: str = Form(""),
     notes: str = Form(""),
+    category: str = Form("other"),
+    isbn: str = Form(""),
+    page_count: str = Form(""),
+    available: str | None = Form(None),
 ):
-    title = title.strip()
-    author = author.strip()
-    notes_val = notes.strip() or None
-    year_val: int | None = None
-    if year.strip():
-        try:
-            year_val = int(year.strip())
-        except ValueError:
-            return HTMLResponse("Invalid year", status_code=400)
-    else:
-        year_val = None
+    payload, form_error = _parse_book_form(
+        title=title,
+        author=author,
+        year=year,
+        notes=notes,
+        category=category,
+        isbn=isbn,
+        page_count=page_count,
+        available=available if available is not None else "0",
+    )
+    if form_error or payload is None:
+        return HTMLResponse(form_error or "Invalid form", status_code=400)
 
     book = await books_repo.update_book(
         book_id,
-        title=title,
-        author=author,
-        year=year_val,
+        title=payload["title"],
+        author=payload["author"],
+        year=payload["year"],
         year_set=True,
-        notes=notes_val,
+        notes=payload["notes"],
         notes_set=True,
+        category=payload["category"],
+        isbn=payload["isbn"],
+        isbn_set=True,
+        page_count=payload["page_count"],
+        page_count_set=True,
+        available=payload["available"],
     )
     if book is None:
         return HTMLResponse("Book not found", status_code=404)
@@ -230,6 +438,7 @@ async def update_book(
             page=1,
             size=DEFAULT_PAGE_SIZE,
             q="",
+            list_base="/ui/books",
         ),
     )
 
@@ -248,10 +457,10 @@ async def delete_book(
     q: str | None = Query(None),
 ):
     await books_repo.delete_book(book_id)
-    data = await _books_page_data(page, size, q)
+    data = await _books_page_data(base_path="/ui/books", page=page, size=size, q=q)
     if data["total"] and page > data["total_pages"]:
         page = data["total_pages"]
-        data = await _books_page_data(page, size, q)
+        data = await _books_page_data(base_path="/ui/books", page=page, size=size, q=q)
     return templates.TemplateResponse(
         request,
         "partials/books_table.html",

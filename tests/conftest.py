@@ -86,6 +86,10 @@ def sample_book_data():
         "author": "Ada Lovelace",
         "year": 1842,
         "notes": "A test book",
+        "category": "biography",
+        "isbn": "978-0000000001",
+        "page_count": 320,
+        "available": True,
     }
 
 
@@ -96,6 +100,10 @@ def sample_book_update_data():
         "author": "Grace Hopper",
         "year": 1952,
         "notes": "Updated notes",
+        "category": "scifi",
+        "isbn": "978-0000000002",
+        "page_count": 400,
+        "available": False,
     }
 
 

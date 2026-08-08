@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Advanced search · Books{% endblock %}
+{% block content %}
+<h1>Advanced search</h1>
+<p>
+  Filter with Pico form controls; results swap via HTMX.
+  <a href="/ui/books">Back to books</a>
+</p>
+
+{# Filters stay outside #books-panel so inputs keep focus / state while results swap. #}
+<form
+  class="filters-form"
+  method="get"
+  action="/ui/books/search"
+  hx-get="/ui/books/search"
+  hx-target="#books-panel"
+  hx-swap="innerHTML"
+  hx-trigger="change, keyup changed delay:300ms from:input[type='search'], keyup changed delay:300ms from:input[type='number'], search from:input[type='search']"
+  hx-push-url="true"
+  hx-indicator="#books-indicator"
+>
+  <input type="hidden" name="page" value="1">
+  <input type="hidden" name="size" value="{{ size }}">
+
+  <div class="grid">
+    <label>
+      Text
+      <input
+        type="search"
+        name="q"
+        value="{{ q }}"
+        placeholder="Title, author, or ISBN"
+        autocomplete="off"
+      >
+    </label>
+    <label>
+      Category
+      <select name="category">
+        <option value="" {% if not category %}selected{% endif %}>Any</option>
+        {% for c in categories %}
+        <option value="{{ c }}" {% if category == c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Availability
+      <select name="available">
+        <option value="any" {% if available == 'any' or not available %}selected{% endif %}>Any</option>
+        <option value="true" {% if available == 'true' or available == '1' %}selected{% endif %}>Available</option>
+        <option value="false" {% if available == 'false' or available == '0' %}selected{% endif %}>Unavailable</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="grid">
+    <label>
+      Added by
+      <select name="added_by_user_id">
+        <option value="" {% if not added_by_user_id %}selected{% endif %}>Anyone</option>
+        {% for u in filter_users %}
+        <option value="{{ u.id }}" {% if added_by_user_id == u.id %}selected{% endif %}>{{ u.username }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Year from
+      <input type="number" name="year_min" min="0" max="9999" value="{{ year_min }}">
+    </label>
+    <label>
+      Year to
+      <input type="number" name="year_max" min="0" max="9999" value="{{ year_max }}">
+    </label>
+  </div>
+
+  <div class="actions">
+    <button type="submit">Apply</button>
+    <a href="/ui/books/search" class="secondary">Reset</a>
+    <div
+      id="books-indicator"
+      class="htmx-indicator"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading"
+    >
+      <span class="spinner" aria-hidden="true"></span>
+    </div>
+  </div>
+  <noscript><p><small>Without JavaScript, use Apply to filter.</small></p></noscript>
+</form>
+
+<div id="books-panel">
+  {% include "partials/books_table.html" %}
+</div>
+{% endblock %}
