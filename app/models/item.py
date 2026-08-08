@@ -1,10 +1,14 @@
 # Standard library imports
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID, uuid4
 
 # Third-party imports
 from pydantic import BaseModel, Field
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class ItemBase(BaseModel):
@@ -27,15 +31,8 @@ class ItemUpdate(BaseModel):
 class Item(ItemBase):
     """Complete Item model with all fields."""
     id: UUID = Field(default_factory=uuid4, description="Unique item identifier")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Item creation timestamp")
-    updated_at: datetime = Field(default_factory=datetime.utcnow, description="Item last update timestamp")
-
-    class Config:
-        """Pydantic configuration."""
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            UUID: lambda v: str(v)
-        }
+    created_at: datetime = Field(default_factory=utc_now, description="Item creation timestamp")
+    updated_at: datetime = Field(default_factory=utc_now, description="Item last update timestamp")
 
 
 class ItemResponse(Item):

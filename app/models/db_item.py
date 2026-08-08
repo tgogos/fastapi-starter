@@ -1,11 +1,14 @@
 # Standard library imports
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
-from uuid import UUID, uuid4
 
 # Third-party imports
-from pydantic import BaseModel, Field
 from bson import ObjectId
+from pydantic import BaseModel, ConfigDict, Field
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class DBItemBase(BaseModel):
@@ -27,34 +30,23 @@ class DBItemUpdate(BaseModel):
 
 class DBItem(DBItemBase):
     """Complete database item model with all fields."""
-    id: ObjectId = Field(default_factory=ObjectId, alias="_id", description="MongoDB document ID")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="Item creation timestamp")
-    updated_at: datetime = Field(default_factory=datetime.utcnow, description="Item last update timestamp")
+    model_config = ConfigDict(
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
 
-    class Config:
-        """Pydantic configuration."""
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            ObjectId: lambda v: str(v)
-        }
-        validate_by_name = True
-        arbitrary_types_allowed = True
+    id: ObjectId = Field(default_factory=ObjectId, alias="_id", description="MongoDB document ID")
+    created_at: datetime = Field(default_factory=utc_now, description="Item creation timestamp")
+    updated_at: datetime = Field(default_factory=utc_now, description="Item last update timestamp")
 
 
 class DBItemResponse(DBItemBase):
     """Database item model for API responses."""
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str = Field(..., description="MongoDB document ID as string")
     created_at: datetime = Field(..., description="Item creation timestamp")
     updated_at: datetime = Field(..., description="Item last update timestamp")
-
-    class Config:
-        """Pydantic configuration."""
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-            ObjectId: lambda v: str(v)
-        }
-        validate_by_name = True
-        arbitrary_types_allowed = True
 
 
 class PaginatedDBItems(BaseModel):

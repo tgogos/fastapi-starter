@@ -1,5 +1,5 @@
 # Standard library imports
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 # Third-party imports
@@ -44,7 +44,7 @@ async def create_db_item(item: DBItemCreate) -> DBItemResponse:
         )
         
         # Convert to dict for MongoDB insertion
-        item_dict = new_item.dict(by_alias=True, exclude={"id"})
+        item_dict = new_item.model_dump(by_alias=True, exclude={"id"})
         
         # Insert into MongoDB
         result = await collection.insert_one(item_dict)
@@ -247,7 +247,7 @@ async def update_db_item(item_id: str, item_update: DBItemUpdate) -> DBItemRespo
             )
         
         # Prepare update data
-        update_data = item_update.dict(exclude_unset=True)
+        update_data = item_update.model_dump(exclude_unset=True)
         if not update_data:
             raise HTTPException(
                 status_code=400,
@@ -255,7 +255,7 @@ async def update_db_item(item_id: str, item_update: DBItemUpdate) -> DBItemRespo
             )
         
         # Add updated timestamp
-        update_data["updated_at"] = datetime.utcnow()
+        update_data["updated_at"] = datetime.now(timezone.utc)
         
         # Update the item
         result = await collection.update_one(

@@ -1,5 +1,5 @@
 # Standard library imports
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List
 from uuid import UUID, uuid4
 
@@ -45,7 +45,7 @@ async def create_item(item: ItemCreate) -> ItemResponse:
         # Store in memory
         items_storage[new_item.id] = new_item
         
-        return ItemResponse(**new_item.dict())
+        return ItemResponse(**new_item.model_dump())
     
     except Exception as e:
         raise HTTPException(
@@ -90,7 +90,7 @@ async def get_items(
         paginated_items = all_items[start_idx:end_idx]
         
         # Convert to response models
-        item_responses = [ItemResponse(**item.dict()) for item in paginated_items]
+        item_responses = [ItemResponse(**item.model_dump()) for item in paginated_items]
         
         return PaginatedItems(
             items=item_responses,
@@ -132,7 +132,7 @@ async def get_item(item_id: UUID) -> ItemResponse:
         )
     
     item = items_storage[item_id]
-    return ItemResponse(**item.dict())
+    return ItemResponse(**item.model_dump())
 
 
 @router.put("/{item_id}", 
@@ -165,7 +165,7 @@ async def update_item(item_id: UUID, item_update: ItemUpdate) -> ItemResponse:
         existing_item = items_storage[item_id]
         
         # Update fields if provided
-        update_data = item_update.dict(exclude_unset=True)
+        update_data = item_update.model_dump(exclude_unset=True)
         if not update_data:
             raise HTTPException(
                 status_code=400,
@@ -177,12 +177,12 @@ async def update_item(item_id: UUID, item_update: ItemUpdate) -> ItemResponse:
             setattr(existing_item, field, value)
         
         # Update timestamp
-        existing_item.updated_at = datetime.utcnow()
+        existing_item.updated_at = datetime.now(timezone.utc)
         
         # Store updated item
         items_storage[item_id] = existing_item
         
-        return ItemResponse(**existing_item.dict())
+        return ItemResponse(**existing_item.model_dump())
     
     except HTTPException:
         raise
@@ -268,7 +268,7 @@ async def search_items(
         paginated_items = matching_items[start_idx:end_idx]
         
         # Convert to response models
-        item_responses = [ItemResponse(**item.dict()) for item in paginated_items]
+        item_responses = [ItemResponse(**item.model_dump()) for item in paginated_items]
         
         return PaginatedItems(
             items=item_responses,
