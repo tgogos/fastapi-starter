@@ -1,0 +1,98 @@
+# Engineering notes
+
+Decisions for this starter. Prefer simple, robust, boring.
+
+This file is the source of truth for architecture and conventions. When a decision or the code changes, update this document in the same change so it stays accurate for future readers (and agents). Do not refer to chat threads, option letters, or temporary debate labels.
+
+## Goals
+
+- Mature shape (clear modules, auth, tests, Docker) without shortcuts that fight growth.
+- One primary full-stack path; optional demos stay thin and removable.
+- Async-first; raw SQL (no ORM); Pydantic at the HTTP edge only.
+
+## Product shape
+
+| Surface | Role |
+|---------|------|
+| SQLite + session/CSRF + HTMX UI + protected SQL JSON API | Primary path — fork and grow this |
+| `/items` (in-memory) | Minimal teaching CRUD — no auth, no UI |
+| `/db-items` (MongoDB) | Optional NoSQL demo — removable |
+
+Do not add auth, HTMX, or shared abstractions to the memory/Mongo demos unless the point is to teach that idea. Keep demos thin on purpose.
+
+The primary domain entity is named **items**. It may be renamed to something more concrete later (for example books); do not rename until that is decided.
+
+## Code style (primary path)
+
+Write primary-path code like the SQL and web layers:
+
+- Thin route handlers: validate → call a helper → map to the response model.
+- SQL in small modules (`app/db/…`, `app/auth/users.py`) with parameterized queries.
+- Schema in `app/db/schema.sql`.
+- Pydantic models are request/response schemas only, not persistence objects.
+- Prefer FastAPI dependencies for auth over ad-hoc checks in every handler.
+
+Reference implementations: `app/routes/sql_items.py`, `app/db/items.py`, `app/web/`.
+
+The in-memory and Mongo routes may stay more verbose (logic in the handler, broad try/except). That style is for demos only — do not copy it into the primary path.
+
+## URL layout
+
+Path indicates the client. Do not serve HTML under `/api`, and do not issue API tokens from the HTML `/auth` routes.
+
+| Prefix | Client | Auth | Response |
+|--------|--------|------|----------|
+| `/api/...` | Machines (curl, Swagger, services) | Bearer (session also allowed where useful) | JSON |
+| `/auth/...` | Browsers | Session cookie + CSRF | HTML (forms, redirects) |
+| `/ui/...` | Browsers and HTMX | Session + CSRF on mutations | HTML pages and fragments |
+| `/items`, `/db-items` | Teaching demos | None | JSON |
+| `/`, `/health`, `/docs` | Ops / docs | — | unchanged |
+
+**Browser auth routes:** `GET/POST /auth/login`, `POST /auth/logout` — establish or clear a session. No token issuance.
+
+**API auth routes:** `POST /api/auth/token` (and optionally `GET /api/auth/me`) — JSON; issue or introspect a Bearer token.
+
+**HTMX:** pages and partials share the `/ui/...` prefix (same router). Do not add a separate `/htmx` prefix. Use `templates/` for full pages and `templates/partials/` for fragments.
+
+**Status:** The SQL JSON API is currently mounted at `/sql-items` (session auth on writes only). Moving it under `/api`, adding token auth, and wiring Swagger Bearer are decided but not implemented yet. Existing paths remain valid until that work lands.
+
+## Authentication
+
+One user store; two client mechanisms:
+
+1. **Browsers / HTMX** — signed session cookie. Mutating HTML/HTMX requests require CSRF (`require_user_html`, `verify_csrf`).
+2. **Machine clients** — opaque Bearer token from `POST /api/auth/token` (username/password). Store tokens in SQLite so revocation is deleting a row. Do not default to JWT unless this document is updated to say so.
+3. **Protected JSON routes** — `require_user` accepts a valid session **or** a valid Bearer token.
+4. **Swagger `/docs`** — use HTTP Bearer for `/api` routes. Cookie login is for the UI, not the main docs Authorize flow.
+
+CSRF applies to cookie-authenticated browser mutations. Bearer requests do not use CSRF.
+
+In-memory and Mongo demos remain unauthenticated unless that changes deliberately.
+
+**Status:** Session + CSRF for the UI and session checks on `/sql-items` writes are implemented. Bearer tokens, `/api/auth/token`, dual acceptance in `require_user`, and Swagger Bearer are decided but not implemented yet.
+
+## Non-negotiables
+
+- **Async-first** on the request path (async handlers, aiosqlite, Motor). Avoid new sync I/O in handlers. Sync `bcrypt` is an accepted exception; do not add more blocking work without noting it here.
+- **No ORM** (no SQLAlchemy, SQLModel, Tortoise, etc.). SQL strings + parameters.
+- **Removable modules** — Mongo, web UI, and demos must stay deletable via the README checklist pattern; do not entangle them into the primary path.
+- **Document new patterns here** in the same change that introduces them.
+
+## Patterns in use (primary path)
+
+- Lifespan for connect / schema / seed / shutdown (not deprecated `@on_event`).
+- Process-wide SQLite connection via `app/db/connection.py` (simple single-process setup; not a pool).
+- Repository-style helpers return dicts (or simple structures); routes map to Pydantic.
+- Separate dependencies for JSON vs HTML auth: `require_user` vs `require_user_html` + `LoginRequired`.
+- Settings via Pydantic Settings (`app/core/config.py`).
+- Shared identity helpers in `app/auth/` (passwords, users, deps). HTTP routes live in `app/routes/` (JSON) and `app/web/` (HTML).
+
+## Out of scope
+
+Unless this document is updated first:
+
+- ORMs and sync DB drivers for the primary path
+- SPA frameworks or a frontend build step (vanilla JS + HTMX + Pico)
+- OAuth2 / OIDC providers
+- JWT as the default API token
+- A shared abstraction that unifies memory, Mongo, and SQL backends
