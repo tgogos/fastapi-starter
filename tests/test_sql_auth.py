@@ -82,6 +82,12 @@ class TestApiAuth:
         delete = client.delete(f"{API_SQL}/{item_id}", headers=headers)
         assert delete.status_code == 204
 
+        revoke = client.delete("/api/auth/token", headers=headers)
+        assert revoke.status_code == 204
+
+        me_after = client.get("/api/auth/me", headers=headers)
+        assert me_after.status_code == 401
+
     def test_invalid_bearer_rejected(self, client: TestClient, sample_item_data: dict):
         response = client.post(
             f"{API_SQL}/",
@@ -92,6 +98,9 @@ class TestApiAuth:
 
     def test_me_requires_auth(self, client: TestClient):
         assert client.get("/api/auth/me").status_code == 401
+
+    def test_revoke_requires_bearer(self, client: TestClient):
+        assert client.delete("/api/auth/token").status_code == 401
 
 
 class TestAuthWeb:
@@ -126,12 +135,34 @@ class TestAuthWeb:
 
         ui = client.get("/ui/items")
         assert ui.status_code == 200
+        # CSRF rotated on login — take the token from the UI page
+        csrf = ui.text.split('name="csrf_token" value="', 1)[1].split('"', 1)[0]
 
-        logout = client.get("/auth/logout", follow_redirects=False)
+        logout = client.post(
+            "/auth/logout",
+            data={"csrf_token": csrf},
+            follow_redirects=False,
+        )
         assert logout.status_code == 303
 
         again = client.get("/ui/items", follow_redirects=False)
         assert again.status_code == 303
+
+    def test_login_rejects_bad_csrf(self, client: TestClient):
+        client.get("/auth/login")  # establish session + CSRF
+        response = client.post(
+            "/auth/login",
+            data={
+                "username": os.environ["DEMO_USERNAME"],
+                "password": os.environ["DEMO_PASSWORD"],
+                "csrf_token": "not-the-real-token",
+            },
+            follow_redirects=False,
+        )
+        assert response.status_code == 403
+
+    def test_get_logout_removed(self, client: TestClient):
+        assert client.get("/auth/logout").status_code == 405
 
 
 class TestHealthSqlite:

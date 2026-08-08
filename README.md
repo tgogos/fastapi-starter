@@ -11,7 +11,7 @@ A minimal FastAPI starter template with JSON APIs, MongoDB, SQLite, session auth
 - **Web UI** (removable): Pico CSS + HTMX + vanilla JS under `/ui` and `/auth`
 - **Auth**:
   - Browser: signed cookie sessions + CSRF on mutating HTML/HTMX requests
-  - API: `POST /api/auth/token` → opaque Bearer token (Swagger Authorize)
+  - API: `POST /api/auth/token` → opaque Bearer token; `DELETE /api/auth/token` revokes it (Swagger Authorize)
 - **Configuration**: Pydantic Settings with environment variable validation
 - **Testing**: pytest suite (in-memory items, SQL items, token + session auth)
 - **Docker Compose** with hot reload
@@ -68,6 +68,10 @@ curl -s -X POST http://localhost:8000/api/auth/token \
 # → {"access_token":"...","token_type":"bearer"}
 
 curl -s http://localhost:8000/api/auth/me \
+  -H "Authorization: Bearer <access_token>"
+
+# Revoke when done:
+curl -s -X DELETE http://localhost:8000/api/auth/token \
   -H "Authorization: Bearer <access_token>"
 ```
 

@@ -48,9 +48,9 @@ Path indicates the client. Do not serve HTML under `/api`, and do not issue API 
 | `/items`, `/db-items` | Teaching demos | None | JSON |
 | `/`, `/health`, `/docs` | Ops / docs | — | unchanged |
 
-**Browser auth routes:** `GET/POST /auth/login`, `POST /auth/logout` — establish or clear a session. No token issuance.
+**Browser auth routes:** `GET/POST /auth/login`, `POST /auth/logout` — establish or clear a session. Logout is POST-only with CSRF (no GET logout). No token issuance here.
 
-**API auth routes:** `POST /api/auth/token` (and optionally `GET /api/auth/me`) — JSON; issue or introspect a Bearer token.
+**API auth routes:** `POST /api/auth/token` (issue), `DELETE /api/auth/token` (revoke current Bearer), `GET /api/auth/me` (introspect).
 
 **HTMX:** pages and partials share the `/ui/...` prefix (same router). Do not add a separate `/htmx` prefix. Use `templates/` for full pages and `templates/partials/` for fragments.
 
@@ -69,7 +69,7 @@ CSRF applies to cookie-authenticated browser mutations. Bearer requests do not u
 
 In-memory and Mongo demos remain unauthenticated unless that changes deliberately.
 
-Implemented: session + CSRF for the UI; `POST /api/auth/token` + opaque tokens in `api_tokens`; `require_user` accepts Bearer or session; Swagger shows HTTP Bearer via `HTTPBearer` on API deps.
+Implemented: session + CSRF for the UI (`Depends(verify_csrf)` on mutating `/auth` and `/ui` routes); `POST/DELETE /api/auth/token` + opaque tokens in `api_tokens`; `require_user` accepts Bearer or session; Swagger shows HTTP Bearer via `HTTPBearer` on API deps.
 
 ## Non-negotiables
 
