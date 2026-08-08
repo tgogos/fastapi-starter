@@ -18,7 +18,7 @@ Fork and grow the primary path. Keep demos minimal or delete them.
 
 ## Quick start
 
-**Requires:** Docker Compose. Make is optional.
+**Requires:** Docker Compose. Make is optional. Dependencies are managed with [uv](https://docs.astral.sh/uv/) (`pyproject.toml` + `uv.lock`).
 
 ```bash
 make dotenv   # .env.example → .env
@@ -37,6 +37,18 @@ make test     # pytest in the app container
 make down     # stop
 ```
 
+### Local development with uv (optional)
+
+```bash
+# Install uv: https://docs.astral.sh/uv/getting-started/installation/
+uv sync --all-groups          # or: make sync
+source .venv/bin/activate     # or: uv run …
+uv run fastapi dev app/main.py --port 8000 --host 0.0.0.0
+uv run pytest
+```
+
+After changing dependencies in `pyproject.toml`, run `uv lock` (or `make lock`) and commit `uv.lock`.
+
 ## Auth in brief
 
 See [`docs/auth.md`](docs/auth.md) for the full picture (cookies, CSRF, Bearer).
@@ -53,6 +65,7 @@ curl -s -X POST http://localhost:8000/api/auth/token \
 
 ## Stack notes
 
+- Dependencies: **uv** (`pyproject.toml` + committed `uv.lock`). No `requirements.txt`.
 - Async-first (aiosqlite, Motor for the Mongo demo).
 - SQL without an ORM (`schema.sql` + parameterized queries).
 - Pydantic for request/response schemas only.
@@ -83,6 +96,8 @@ app/
   models/   # Pydantic schemas
   core/     # settings
 docs/       # ENGINEERING.md, auth.md
+pyproject.toml
+uv.lock
 ```
 
 ## Removing pieces

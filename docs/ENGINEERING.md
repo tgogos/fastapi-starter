@@ -88,6 +88,7 @@ Implemented: session + CSRF for the UI and for session-authenticated `/api` writ
 - Opaque API tokens hashed (SHA-256) in `api_tokens`; plaintext returned once from `POST /api/auth/token`.
 - Settings via Pydantic Settings (`app/core/config.py`).
 - Shared identity helpers in `app/auth/` (passwords, users, tokens, deps). HTTP routes live in `app/routes/` (JSON) and `app/web/` (HTML).
+- **uv** for Python deps: `pyproject.toml` + committed `uv.lock`; Docker installs with `uv sync --frozen`. Do not reintroduce `requirements.txt` as a second source of truth.
 
 ## Out of scope
 

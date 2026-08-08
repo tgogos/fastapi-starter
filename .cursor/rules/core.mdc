@@ -13,6 +13,7 @@ Follow `docs/ENGINEERING.md`. Summary for every change:
 - No ORM. Parameterized SQL in helpers; schema in `app/db/schema.sql`.
 - Pydantic = request/response only, not the database layer.
 - Keep Mongo and in-memory demos thin and removable. Do not “upgrade” them unless asked.
+- Python packaging: **uv** (`pyproject.toml` + `uv.lock`). No `requirements.txt`.
 
 ## Primary path style
 

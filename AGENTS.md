@@ -11,6 +11,7 @@ Before changing this repo, read [`docs/ENGINEERING.md`](docs/ENGINEERING.md) and
 - Auth direction: browser session + CSRF; API Bearer opaque tokens in SQLite; protected JSON accepts session or Bearer. Session-authenticated mutating `/api` calls require CSRF. Do not default to JWT or OAuth unless `ENGINEERING.md` says so.
 - Do not rename the `items` domain until that is decided in `ENGINEERING.md`.
 - Do not introduce new architectural patterns without updating `docs/ENGINEERING.md` in the same change.
+- Python deps: **uv** only (`pyproject.toml` + `uv.lock`). Do not add `requirements.txt`.
 
 ## Scope
 

@@ -18,3 +18,10 @@ downv:
 
 test:
 	docker compose -f docker-compose.dev.yml exec fastapi-starter pytest
+
+# Local tooling (optional; Docker remains the default workflow)
+sync:
+	uv sync --all-groups
+
+lock:
+	uv lock
