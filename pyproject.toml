@@ -1,5 +1,5 @@
 [project]
-name = "fastapi-starter"
+name = "fastapi-htmx-starter"
 version = "0.1.0"
 description = "FastAPI + HTMX boilerplate with SQLite auth and a JSON API"
 readme = "README.md"

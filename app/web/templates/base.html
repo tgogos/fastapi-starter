@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <title>{% block title %}FastAPI Starter{% endblock %}</title>
+  <title>{% block title %}FastAPI HTMX Starter{% endblock %}</title>
   <link rel="stylesheet" href="/static/css/pico.min.css">
   <link rel="stylesheet" href="/static/css/app.css">
   <script src="/static/js/htmx.min.js" defer></script>
@@ -14,7 +14,7 @@
   <header class="container">
     <nav>
       <ul>
-        <li><strong><a href="/ui/books">FastAPI Starter</a></strong></li>
+        <li><strong><a href="/ui/books">FastAPI HTMX Starter</a></strong></li>
         {% if user %}
         <li><a href="/ui/books">Books</a></li>
         <li><a href="/ui/books/search">Search books</a></li>

@@ -55,9 +55,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="FastAPI starter",
+    title="FastAPI HTMX Starter",
     description=description,
-    summary="FastAPI starter documentation",
+    summary="FastAPI + HTMX starter documentation",
     version=config.VERSION,
     lifespan=lifespan,
 )

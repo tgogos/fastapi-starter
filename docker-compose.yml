@@ -1,7 +1,7 @@
 services:
-  fastapi-starter:
-    image: ${DOCKER_REG:-}${DOCKER_REPO:-}${APP_NAME:-fastapi-starter}:${DOCKER_TAG:-latest}
-    container_name: ${APP_NAME:-fastapi-starter}
+  fastapi-htmx-starter:
+    image: ${DOCKER_REG:-}${DOCKER_REPO:-}${APP_NAME:-fastapi-htmx-starter}:${DOCKER_TAG:-latest}
+    container_name: ${APP_NAME:-fastapi-htmx-starter}
     build:
       context: .
     ports:
@@ -15,7 +15,7 @@ services:
 
   mongodb:
     image: mongo:7.0
-    container_name: ${APP_NAME:-fastapi-starter}-mongodb
+    container_name: ${APP_NAME:-fastapi-htmx-starter}-mongodb
     ports:
       - "27017:27017"
     environment:
@@ -25,5 +25,5 @@ services:
       - mongodb_data:/data/db
 
 volumes:
-  mongodb_data:
   sqlite_data:
+  mongodb_data:

@@ -1,4 +1,4 @@
-# FastAPI Starter
+# FastAPI HTMX Starter
 
 Boilerplate for a **server-driven web UI with FastAPI + HTMX** (no SPA, no Node build) that also exposes a **JSON REST API** for other clients (mobile apps, scripts, etc.).
 

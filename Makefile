@@ -17,10 +17,10 @@ downv:
 	docker compose -f docker-compose.dev.yml down -v
 
 test:
-	docker compose -f docker-compose.dev.yml exec fastapi-starter pytest
+	docker compose -f docker-compose.dev.yml exec fastapi-htmx-starter pytest
 
 seed:
-	docker compose -f docker-compose.dev.yml exec fastapi-starter python -m app.seed
+	docker compose -f docker-compose.dev.yml exec fastapi-htmx-starter python -m app.seed
 
 # Local tooling (optional; Docker remains the default workflow)
 sync:
